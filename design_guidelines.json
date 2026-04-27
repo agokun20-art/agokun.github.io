@@ -1,0 +1,173 @@
+{
+  "theme": "dark",
+  "archetype": "5 (Jewel & Luxury / Premium Calm)",
+  "colors": {
+    "background": {
+      "default": "#0A1428",
+      "surface": "#12182B",
+      "surface_elevated": "#1A2235",
+      "glass": "rgba(255, 255, 255, 0.03)"
+    },
+    "primary": {
+      "default": "#00E5C0",
+      "hover": "#33EAD1",
+      "active": "#00C9A8",
+      "glow": "rgba(0, 229, 192, 0.4)"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A0ABC0",
+      "tertiary": "#718096",
+      "inverse": "#0A1428"
+    },
+    "border": {
+      "default": "#242E42",
+      "glass": "rgba(255, 255, 255, 0.08)",
+      "active": "rgba(0, 229, 192, 0.5)"
+    },
+    "semantic": {
+      "success": "#00E5C0",
+      "warning": "#F6AD55",
+      "error": "#FC8181",
+      "info": "#63B3ED"
+    }
+  },
+  "typography": {
+    "font_family": {
+      "heading": "SF Pro Display, Inter, sans-serif",
+      "body": "Inter, -apple-system, sans-serif"
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl tracking-tighter font-semibold text-white",
+      "h2": "text-2xl sm:text-3xl tracking-tight font-medium text-white",
+      "h3": "text-xl tracking-tight font-medium text-white",
+      "body": "text-base leading-relaxed font-normal text-[#A0ABC0]",
+      "label": "text-xs tracking-[0.2em] font-medium uppercase text-[#718096]"
+    }
+  },
+  "spacing_and_layout": {
+    "screen_padding": "p-6 sm:p-8",
+    "card_padding": "p-6",
+    "gap": {
+      "small": "gap-4",
+      "medium": "gap-6",
+      "large": "gap-10"
+    },
+    "radius": {
+      "card": "rounded-3xl",
+      "button": "rounded-full",
+      "chip": "rounded-full"
+    }
+  },
+  "components": {
+    "tab_bar": {
+      "style": "fixed bottom-0 w-full h-24 backdrop-blur-2xl bg-[#0A1428]/80 border-t border-[#242E42] pb-safe flex justify-around items-center px-6 z-50",
+      "icon_active": "text-[#00E5C0]",
+      "icon_inactive": "text-[#718096]"
+    },
+    "card_solid": {
+      "style": "bg-[#12182B] border border-[#242E42] rounded-3xl p-6 shadow-sm",
+      "description": "Used for data-heavy dashboard sections"
+    },
+    "card_glass": {
+      "style": "backdrop-blur-2xl bg-white/[0.03] border border-white/[0.08] rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.12)]",
+      "description": "Used for Morning Brief and emotional/calm segments"
+    },
+    "floating_action_button": {
+      "style": "fixed bottom-28 right-6 w-16 h-16 rounded-full bg-[#0A1428] border border-[#00E5C0]/50 flex items-center justify-center shadow-[0_0_24px_rgba(0,229,192,0.25)] hover:shadow-[0_0_40px_rgba(0,229,192,0.5)] hover:scale-105 transition-all duration-300 z-50",
+      "description": "Instant Decision Engine Trigger"
+    },
+    "chip_inactive": {
+      "style": "px-5 py-2.5 rounded-full bg-[#1A2235] border border-[#242E42] text-sm text-[#A0ABC0] flex items-center gap-2 hover:bg-[#242E42] transition-colors"
+    },
+    "chip_active": {
+      "style": "px-5 py-2.5 rounded-full bg-[#00E5C0]/10 border border-[#00E5C0]/50 text-[#00E5C0] text-sm flex items-center gap-2 transition-colors"
+    }
+  },
+  "motion_and_animation": {
+    "web_tailwind": {
+      "hover_card": "transition-all duration-300 ease-out hover:-translate-y-1 hover:border-white/[0.15]",
+      "fade_in_up": "animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out",
+      "pulse_glow": "animate-pulse shadow-[0_0_15px_rgba(0,229,192,0.4)]"
+    },
+    "react_native_reanimated": {
+      "card_entrance": "FadeInDown.duration(600).springify().damping(16).stagger(100)",
+      "fab_pulse": "withRepeat(withSequence(withTiming(1.1, {duration: 1500}), withTiming(1, {duration: 1500})), -1, true)",
+      "tab_switch": "withSpring(isActive ? 1 : 0.8, { damping: 14, stiffness: 100 })",
+      "bottom_sheet": "SlideInDown.springify().damping(20).stiffness(90)"
+    }
+  },
+  "media_and_imagery": {
+    "images": {
+      "avatar": {
+        "url": "https://images.pexels.com/photos/10620268/pexels-photo-10620268.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Elegant dark mode portrait for user profile settings",
+        "category": "profile"
+      },
+      "decision_engine_orb": {
+        "url": "https://images.pexels.com/photos/33879244/pexels-photo-33879244.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Abstract glowing orb representing the AI assistant. Use in the decision engine modal background.",
+        "category": "hero_illustration"
+      },
+      "morning_coffee": {
+        "url": "https://images.pexels.com/photos/30088195/pexels-photo-30088195.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Minimalist morning vibe for the morning brief card overlay",
+        "category": "morning_brief"
+      },
+      "weather_abstract": {
+        "url": "https://images.pexels.com/photos/30052971/pexels-photo-30052971.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Dark atmospheric cloud/weather abstract for the weather card background",
+        "category": "weather"
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style_notes": "Use strokeWidth={1.5} for a premium, lightweight feel. Scale sizes to 24px or 28px for mobile tap targets."
+    }
+  },
+  "screens_and_flows": {
+    "morning_brief": {
+      "layout": "Vertical scroll layout. Top: greeting H1 and Overline Date. Middle: Weather glass card (with weather_abstract image as 30% opacity bg). Bottom: Horizontal scroll list for 'Top 3 Priorities'.",
+      "testid": "screen-morning-brief"
+    },
+    "instant_decision_engine": {
+      "layout": "Bottom sheet modal or full-screen glass overlay. Features a central 'decision_engine_orb' image, with staggered active suggestion chips (e.g. 'What should I eat?') floating around it.",
+      "testid": "modal-decision-engine"
+    },
+    "daily_flow_dashboard": {
+      "layout": "Strict Bento grid. 2-column mobile layout. Top wide card for 'Time', square cards for 'Money' and 'Health', vertical card for 'Energy'.",
+      "testid": "screen-daily-flow"
+    },
+    "evening_wind_down": {
+      "layout": "Deep dark gradient background (mixing #0A1428 with black). Central typography focus. Sequential fading text summarizing the day, and a minimalistic spending summary bar chart (recharts).",
+      "testid": "screen-wind-down"
+    },
+    "settings_profile": {
+      "layout": "List view. Top: Avatar image centered. Right-aligned switches for Family Sharing and AI Training. Subtle 1px border dividers.",
+      "testid": "screen-settings"
+    }
+  },
+  "testing": {
+    "attributes": [
+      "data-testid=\"nav-home-tab\"",
+      "data-testid=\"nav-flow-tab\"",
+      "data-testid=\"nav-settings-tab\"",
+      "data-testid=\"fab-decision-engine\"",
+      "data-testid=\"card-weather-summary\"",
+      "data-testid=\"card-daily-priority\"",
+      "data-testid=\"button-wind-down-start\"",
+      "data-testid=\"switch-family-sharing\"",
+      "data-testid=\"switch-ai-training\"",
+      "data-testid=\"chip-suggestion\""
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Design specifically for a mobile-first web app experience mimicking a native React Native Expo feel (generous safe areas, fixed bottom nav, bottom sheets).",
+    "Use SF Pro Display for headings with tight tracking (tracking-tight) to ensure the premium look, and Inter for highly readable body text.",
+    "The UI must feel 'calm' and 'quiet'. Rely heavily on negative space (generous padding like p-6/p-8) rather than dense dividers.",
+    "Do NOT use pure white (#FFFFFF) for text. Use #A0ABC0 (secondary) for descriptions and max #FFFFFF/90 for main titles to reduce eye strain.",
+    "The FAB must be implemented as a glowing orb that pulses softly. This is the central piece of the app.",
+    "For the daily flow dashboard, implement a bento grid using CSS Grid (grid-cols-2) and combine col-span classes to make diverse card shapes.",
+    "Apply `data-testid` to ALL interactive elements, tabs, and switches as specified in the testing section."
+  ]
+}
