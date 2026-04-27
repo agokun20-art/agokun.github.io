@@ -46,11 +46,11 @@ export default function WindDownScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']} testID="screen-wind-down">
       <LinearGradient
-        colors={['#0A1428', '#050912', '#0A1428']}
+        colors={['#000000', '#050505', '#000000']}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
-        colors={['rgba(183,148,244,0.15)', 'rgba(10,20,40,0)']}
+        colors={['rgba(255,255,255,0.08)', 'rgba(0,0,0,0)']}
         style={styles.topGlow}
         pointerEvents="none"
       />
@@ -350,8 +350,8 @@ const styles = StyleSheet.create({
   reflection: {
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: 'rgba(0,229,192,0.3)',
-    backgroundColor: 'rgba(0,229,192,0.06)',
+    borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     padding: SPACING.xl,
   },
   reflectionLabel: {

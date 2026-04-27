@@ -162,7 +162,7 @@ async def flow_dashboard():
                 "label": "focused today",
                 "delta": "+22% vs yesterday",
                 "positive": True,
-                "accent": "#00E5C0"
+                "accent": "#FFFFFF"
             },
             {
                 "id": "money",
@@ -172,7 +172,7 @@ async def flow_dashboard():
                 "label": "spent today",
                 "delta": "Under budget",
                 "positive": True,
-                "accent": "#63B3ED"
+                "accent": "#D4D4D4"
             },
             {
                 "id": "health",
@@ -182,7 +182,7 @@ async def flow_dashboard():
                 "label": "steps · 72 bpm",
                 "delta": "On track",
                 "positive": True,
-                "accent": "#FC8181"
+                "accent": "#B8B8B8"
             },
             {
                 "id": "connections",
@@ -190,9 +190,9 @@ async def flow_dashboard():
                 "icon": "users",
                 "value": "3",
                 "label": "warm check-ins left",
-                "delta": "Text Maya 👋",
+                "delta": "Text Maya",
                 "positive": True,
-                "accent": "#F6AD55"
+                "accent": "#9A9A9A"
             },
             {
                 "id": "energy",
@@ -202,7 +202,7 @@ async def flow_dashboard():
                 "label": "daily reserve",
                 "delta": "Rest at 9 PM",
                 "positive": True,
-                "accent": "#B794F4"
+                "accent": "#7A7A7A"
             }
         ]
     }

@@ -16,7 +16,7 @@ export default function GlassCard({ children, style, glow, testID }: Props) {
       <LinearGradient
         colors={
           glow
-            ? ['rgba(0,229,192,0.08)', 'rgba(18,24,43,0.85)']
+            ? ['rgba(255,255,255,0.08)', 'rgba(13,13,13,0.85)']
             : ['rgba(255,255,255,0.04)', 'rgba(255,255,255,0.01)']
         }
         start={{ x: 0, y: 0 }}

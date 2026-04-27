@@ -1,26 +1,26 @@
 export const COLORS = {
-  bg: '#0A1428',
-  surface: '#12182B',
-  surfaceElevated: '#1A2235',
-  glass: 'rgba(255,255,255,0.03)',
+  bg: '#000000',
+  surface: '#0D0D0D',
+  surfaceElevated: '#151515',
+  glass: 'rgba(255,255,255,0.02)',
   glassBorder: 'rgba(255,255,255,0.08)',
 
-  primary: '#00E5C0',
-  primaryHover: '#33EAD1',
-  primaryActive: '#00C9A8',
-  primaryGlow: 'rgba(0,229,192,0.35)',
+  primary: '#FFFFFF',
+  primaryHover: '#F5F5F5',
+  primaryActive: '#E5E5E5',
+  primaryGlow: 'rgba(255,255,255,0.18)',
 
   text: '#FFFFFF',
-  textSecondary: '#A0ABC0',
-  textTertiary: '#718096',
+  textSecondary: '#9A9A9A',
+  textTertiary: '#5F5F5F',
 
-  border: '#242E42',
+  border: '#1F1F1F',
 
-  warning: '#F6AD55',
-  error: '#FC8181',
-  info: '#63B3ED',
-  accentViolet: '#B794F4',
-  accentPink: '#F687B3',
+  warning: '#B8B8B8',
+  error: '#D4D4D4',
+  info: '#A8A8A8',
+  accentViolet: '#888888',
+  accentPink: '#707070',
 };
 
 export const RADIUS = {

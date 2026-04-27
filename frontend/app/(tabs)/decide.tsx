@@ -136,7 +136,7 @@ export default function DecideScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']} testID="screen-decide">
       <LinearGradient
-        colors={['rgba(0,229,192,0.10)', 'rgba(10,20,40,0)']}
+        colors={['rgba(255,255,255,0.10)', 'rgba(0,0,0,0)']}
         style={styles.topGlow}
         pointerEvents="none"
       />
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(0,229,192,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
@@ -423,9 +423,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: 10,
     borderRadius: RADIUS.pill,
-    backgroundColor: 'rgba(0,229,192,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(0,229,192,0.3)',
+    borderColor: 'rgba(255,255,255,0.3)',
     marginRight: SPACING.sm,
   },
   chipText: { color: COLORS.primary, fontSize: 13, fontWeight: '500' },

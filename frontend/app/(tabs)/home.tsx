@@ -81,7 +81,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']} testID="screen-morning-brief">
       <LinearGradient
-        colors={['rgba(0,229,192,0.10)', 'rgba(10,20,40,0)']}
+        colors={['rgba(255,255,255,0.10)', 'rgba(0,0,0,0)']}
         style={styles.topGlow}
         pointerEvents="none"
       />
@@ -221,7 +221,7 @@ export default function HomeScreen() {
             testID="home-ask-flow-cta"
           >
             <LinearGradient
-              colors={['rgba(0,229,192,0.22)', 'rgba(0,229,192,0.06)']}
+              colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.06)']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0,229,192,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xl,
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: 'rgba(0,229,192,0.35)',
+    borderColor: 'rgba(255,255,255,0.35)',
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.xl,
     flexDirection: 'row',
