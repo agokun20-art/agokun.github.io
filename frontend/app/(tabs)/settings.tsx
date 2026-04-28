@@ -11,11 +11,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { COLORS, RADIUS, SPACING } from '../../src/theme';
 import { api } from '../../src/api';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -184,11 +186,31 @@ export default function SettingsScreen() {
             <LinkRow
               icon="information-circle-outline"
               title="Version"
-              value="1.0.0"
+              value="1.1.0"
               testID="version-row"
               last
             />
           </View>
+        </Animated.View>
+
+        {/* Danger zone */}
+        <Animated.View entering={FadeInDown.duration(500).delay(320)} style={styles.section}>
+          <Text style={styles.sectionLabel}>DANGER ZONE</Text>
+          <Pressable
+            onPress={async () => {
+              const go = typeof window !== 'undefined' && window.confirm
+                ? window.confirm('Delete all your Flow data and restart onboarding?')
+                : true;
+              if (!go) return;
+              await api.resetAll();
+              router.replace('/onboarding');
+            }}
+            style={styles.resetBtn}
+            testID="reset-data-btn"
+          >
+            <Ionicons name="trash-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.resetText}>Reset all data</Text>
+          </Pressable>
         </Animated.View>
 
         {/* Footer */}
@@ -427,4 +449,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
   },
+  resetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  resetText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '500' },
 });

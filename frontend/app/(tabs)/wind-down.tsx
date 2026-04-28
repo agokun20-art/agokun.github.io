@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,30 +6,63 @@ import {
   ScrollView,
   ActivityIndicator,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import { useFocusEffect } from 'expo-router';
 import { COLORS, RADIUS, SPACING } from '../../src/theme';
+import AddExpenseModal from '../../src/components/AddExpenseModal';
 import { api } from '../../src/api';
 
 export default function WindDownScreen() {
   const [data, setData] = useState<any>(null);
+  const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [addingExpense, setAddingExpense] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const flashToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 1400);
+  };
+
+  const load = useCallback(async () => {
+    try {
+      const [res, ex] = await Promise.all([
+        api.eveningBrief(),
+        api.listExpenses(new Date().toISOString().split('T')[0]),
+      ]);
+      setData(res);
+      setExpenses(ex.expenses || []);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await api.eveningBrief();
-        setData(res);
-      } catch (e) {
-        console.log(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+    load();
+  }, [load]);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const saveExpense = async (body: any) => {
+    await api.createExpense(body);
+    flashToast(`+ $${body.amount.toFixed(2)}`);
+    load();
+  };
+
+  const deleteExpense = async (id: string) => {
+    await api.deleteExpense(id);
+    setExpenses((x) => x.filter((e) => e.id !== id));
+    load();
+  };
 
   if (loading || !data) {
     return (
@@ -40,8 +73,10 @@ export default function WindDownScreen() {
   }
 
   const maxSpend = Math.max(
+    1,
     ...data.spending.breakdown.map((b: any) => b.amount)
   );
+  const hasAnySpend = data.spending.total > 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']} testID="screen-wind-down">
@@ -50,43 +85,52 @@ export default function WindDownScreen() {
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
-        colors={['rgba(255,255,255,0.08)', 'rgba(0,0,0,0)']}
+        colors={['rgba(255,255,255,0.06)', 'rgba(0,0,0,0)']}
         style={styles.topGlow}
         pointerEvents="none"
       />
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              load();
+            }}
+            tintColor={COLORS.primary}
+          />
+        }
+      >
         <Animated.View entering={FadeIn.duration(500)} style={styles.header}>
           <Text style={styles.overline}>TONIGHT · {data.date.toUpperCase()}</Text>
           <Text style={styles.title}>Let&apos;s wind down.</Text>
           <Text style={styles.subtitle}>{data.summary}</Text>
         </Animated.View>
 
-        {/* Stats row */}
+        {/* Stats */}
         <Animated.View entering={FadeInDown.duration(500).delay(120)} style={styles.statsGrid}>
           <StatTile
-            icon="footsteps-outline"
-            value={data.stats.steps.toLocaleString()}
-            label="steps"
-            color={COLORS.primary}
+            icon="water-outline"
+            value={`${data.stats.water_glasses}/${data.stats.water_goal}`}
+            label="water"
           />
           <StatTile
-            icon="time-outline"
+            icon="timer-outline"
             value={`${data.stats.focused_minutes}m`}
             label="focus"
-            color={COLORS.info}
           />
           <StatTile
-            icon="phone-portrait-outline"
-            value={`${data.stats.screen_time_hours}h`}
-            label="screen"
-            color={COLORS.warning}
+            icon="checkmark-done-outline"
+            value={`${data.stats.priorities_done}/${data.stats.priorities_total}`}
+            label="done"
           />
           <StatTile
-            icon="bed-outline"
-            value={`${data.stats.sleep_last_night_hours}h`}
-            label="slept"
-            color={COLORS.accentViolet}
+            icon="flash-outline"
+            value={data.stats.energy_rating ? `${data.stats.energy_rating * 20}%` : '—'}
+            label="energy"
           />
         </Animated.View>
 
@@ -98,32 +142,63 @@ export default function WindDownScreen() {
               ${data.spending.total.toFixed(2)}
             </Text>
           </View>
-          {data.spending.breakdown.map((b: any, i: number) => {
-            const pct = (b.amount / maxSpend) * 100;
-            const colors = [COLORS.primary, COLORS.info, COLORS.warning];
-            return (
-              <View key={b.category} style={styles.spendRow}>
-                <View style={styles.spendLabelRow}>
-                  <Text style={styles.spendCategory}>{b.category}</Text>
-                  <Text style={styles.spendAmount}>${b.amount.toFixed(2)}</Text>
+
+          {!hasAnySpend ? (
+            <Text style={styles.spendEmpty}>Nothing logged today.</Text>
+          ) : (
+            data.spending.breakdown.map((b: any) => {
+              const pct = (b.amount / maxSpend) * 100;
+              return (
+                <View key={b.category} style={styles.spendRow}>
+                  <View style={styles.spendLabelRow}>
+                    <Text style={styles.spendCategory}>{b.category}</Text>
+                    <Text style={styles.spendAmount}>${b.amount.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.spendTrack}>
+                    <View style={[styles.spendFill, { width: `${pct}%` }]} />
+                  </View>
                 </View>
-                <View style={styles.spendTrack}>
-                  <View
-                    style={[
-                      styles.spendFill,
-                      { width: `${pct}%`, backgroundColor: colors[i % colors.length] },
-                    ]}
-                  />
+              );
+            })
+          )}
+
+          <Pressable
+            onPress={() => setAddingExpense(true)}
+            style={styles.addExpenseBtn}
+            testID="add-expense-btn"
+          >
+            <Ionicons name="add" size={16} color={COLORS.bg} />
+            <Text style={styles.addExpenseText}>Add expense</Text>
+          </Pressable>
+
+          {expenses.length > 0 && (
+            <View style={styles.expenseList}>
+              {expenses.map((e) => (
+                <View key={e.id} style={styles.expenseItem}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.expName} numberOfLines={1}>
+                      {e.category}
+                      {e.note ? ` · ${e.note}` : ''}
+                    </Text>
+                  </View>
+                  <Text style={styles.expAmt}>${e.amount.toFixed(2)}</Text>
+                  <Pressable
+                    onPress={() => deleteExpense(e.id)}
+                    hitSlop={8}
+                    testID={`expense-delete-${e.id}`}
+                  >
+                    <Ionicons name="close" size={14} color={COLORS.textTertiary} />
+                  </Pressable>
                 </View>
-              </View>
-            );
-          })}
+              ))}
+            </View>
+          )}
         </Animated.View>
 
         {/* Insights */}
         <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.insightSection}>
           <Text style={styles.sectionTitle}>Gentle insights</Text>
-          {data.insights.map((t: string, i: number) => (
+          {(data.insights || []).map((t: string, i: number) => (
             <Animated.View
               key={i}
               entering={FadeInDown.duration(400).delay(380 + i * 100)}
@@ -138,25 +213,15 @@ export default function WindDownScreen() {
         {/* Tomorrow */}
         <Animated.View entering={FadeInDown.duration(500).delay(550)} style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="sunny-outline" size={18} color={COLORS.primary} />
+            <Ionicons name="sunny-outline" size={18} color={COLORS.text} />
             <Text style={[styles.cardTitle, { flex: 1 }]}>Tomorrow</Text>
           </View>
-          <TomorrowRow
-            icon="calendar-outline"
-            label="First event"
-            value={data.tomorrow.first_event}
-          />
-          <TomorrowRow
-            icon="rainy-outline"
-            label="Weather"
-            value={data.tomorrow.weather_hint}
-          />
-          <TomorrowRow
-            icon="alarm-outline"
-            label="Suggested wake"
-            value={data.tomorrow.suggested_wake}
-            last
-          />
+          <Text style={styles.tomEventTitle} numberOfLines={2}>
+            {data.tomorrow.first_event}
+          </Text>
+          {!!data.tomorrow.first_event_time && (
+            <Text style={styles.tomEventTime}>{data.tomorrow.first_event_time}</Text>
+          )}
         </Animated.View>
 
         {/* Reflection */}
@@ -165,14 +230,26 @@ export default function WindDownScreen() {
             <Text style={styles.reflectionLabel}>REFLECT</Text>
             <Text style={styles.reflectionText}>{data.reflection_prompt}</Text>
             <View style={styles.reflectionCta}>
-              <Text style={styles.reflectionCtaText}>Write a note</Text>
-              <Ionicons name="arrow-forward" size={14} color={COLORS.primary} />
+              <Text style={styles.reflectionCtaText}>Coming soon</Text>
+              <Ionicons name="arrow-forward" size={14} color={COLORS.text} />
             </View>
           </Pressable>
         </Animated.View>
 
         <View style={{ height: 140 }} />
       </ScrollView>
+
+      {toast && (
+        <View style={styles.toast} pointerEvents="none">
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      )}
+
+      <AddExpenseModal
+        visible={addingExpense}
+        onClose={() => setAddingExpense(false)}
+        onSave={saveExpense}
+      />
     </SafeAreaView>
   );
 }
@@ -181,42 +258,16 @@ function StatTile({
   icon,
   value,
   label,
-  color,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   value: string;
   label: string;
-  color: string;
 }) {
   return (
     <View style={styles.statTile}>
-      <Ionicons name={icon} size={18} color={color} />
+      <Ionicons name={icon} size={18} color={COLORS.text} />
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function TomorrowRow({
-  icon,
-  label,
-  value,
-  last,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-  last?: boolean;
-}) {
-  return (
-    <View style={[styles.tomRow, !last && styles.tomRowBorder]}>
-      <View style={styles.tomIconBox}>
-        <Ionicons name={icon} size={16} color={COLORS.textSecondary} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.tomLabel}>{label}</Text>
-        <Text style={styles.tomValue}>{value}</Text>
-      </View>
     </View>
   );
 }
@@ -261,7 +312,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: COLORS.text,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     letterSpacing: -0.4,
   },
@@ -287,7 +338,8 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   cardTitle: { color: COLORS.text, fontSize: 17, fontWeight: '600', letterSpacing: -0.3 },
-  spendTotal: { color: COLORS.primary, fontSize: 22, fontWeight: '600', letterSpacing: -0.6 },
+  spendTotal: { color: COLORS.text, fontSize: 22, fontWeight: '600', letterSpacing: -0.6 },
+  spendEmpty: { color: COLORS.textSecondary, fontSize: 13, textAlign: 'left' },
   spendRow: { marginBottom: SPACING.md },
   spendLabelRow: {
     flexDirection: 'row',
@@ -302,7 +354,29 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     overflow: 'hidden',
   },
-  spendFill: { height: 6, borderRadius: 3 },
+  spendFill: { height: 6, borderRadius: 3, backgroundColor: COLORS.text },
+  addExpenseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.text,
+    marginTop: SPACING.md,
+  },
+  addExpenseText: { color: COLORS.bg, fontSize: 13, fontWeight: '700' },
+  expenseList: { marginTop: SPACING.md, gap: SPACING.sm },
+  expenseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  expName: { color: COLORS.textSecondary, fontSize: 13 },
+  expAmt: { color: COLORS.text, fontSize: 13, fontWeight: '600' },
   insightSection: { marginBottom: SPACING.lg },
   sectionTitle: {
     color: COLORS.text,
@@ -321,41 +395,26 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.text,
     marginTop: 7,
   },
   insightText: { flex: 1, color: COLORS.textSecondary, fontSize: 14, lineHeight: 22 },
-  tomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    paddingVertical: SPACING.md,
+  tomEventTitle: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: '500',
+    letterSpacing: -0.3,
   },
-  tomRowBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  tomIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.surfaceElevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tomLabel: {
-    color: COLORS.textTertiary,
-    fontSize: 11,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  tomValue: { color: COLORS.text, fontSize: 14, fontWeight: '500', marginTop: 2 },
+  tomEventTime: { color: COLORS.textSecondary, fontSize: 13, marginTop: 4 },
   reflection: {
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: COLORS.glassBorder,
+    backgroundColor: COLORS.surfaceElevated,
     padding: SPACING.xl,
   },
   reflectionLabel: {
-    color: COLORS.primary,
+    color: COLORS.text,
     fontSize: 10,
     letterSpacing: 2,
     fontWeight: '700',
@@ -370,5 +429,15 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   reflectionCta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  reflectionCtaText: { color: COLORS.primary, fontSize: 13, fontWeight: '600' },
+  reflectionCtaText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' },
+  toast: {
+    position: 'absolute',
+    bottom: 120,
+    alignSelf: 'center',
+    backgroundColor: COLORS.text,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 10,
+    borderRadius: RADIUS.pill,
+  },
+  toastText: { color: COLORS.bg, fontSize: 13, fontWeight: '600' },
 });

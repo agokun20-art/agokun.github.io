@@ -1,0 +1,52 @@
+{
+  "summary": "Flow app full backend + key frontend flows validated. 24/24 backend pytest tests pass (weather, profile, priorities CRUD, expenses CRUD, habits, morning brief POST + AI caching, evening brief, dashboard, chat, reset). Frontend mobile flow end-to-end works: onboarding → home (real Open-Meteo weather '49°F · NEW YORK' + AI outfit + AI quote) → add priority (counter 1 left) → quick actions (water/focus/expense) → Flow dashboard (5 real cards with computed values: 30m focus, $12.50 money, 2/8 water, 0 connections, 80% energy) → Wind-Down (real spending breakdown + AI insights + delete chip) → Settings (name, switches, reset visible). Found and fixed one real integration bug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Home → POST /api/brief/morning when geolocation not yet available",
+        "issue": "FIXED. api.ts was sending JSON.stringify({}) when no loc passed, causing backend Pydantic validation to return 422 (lat/lon required on WeatherLoc). Now omits body entirely when no valid coords. Backend logs previously showed multiple 422s; now resolved.",
+        "affected_testIDs": ["card-weather-summary", "home-greeting"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "global",
+        "issues": [
+          "Console deprecation warnings: shadow* style props (use boxShadow), props.pointerEvents (use style.pointerEvents). Cosmetic — does not break functionality.",
+          "Expo warning: expo-location@55.1.8 vs expected ~19.0.8 (version drift). App works but main agent should align via `expo install expo-location`."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Fix shadow*/pointerEvents deprecation warnings in styled components.",
+    "(Optional) Run `npx expo install expo-location` to silence Expo SDK version-drift warning."
+  ],
+  "critical_code_review_comments": [
+    "server.py: POST /api/brief/morning declares loc as Optional[WeatherLoc]=None — FastAPI returns 422 on empty body {} because body parsing is attempted; consider tolerating empty objects on backend too as a defensive measure (frontend now omits body, but other clients could still send {}).",
+    "server.py is ~870 lines — borderline; consider splitting routes into modules (weather/priorities/expenses/habits/chat/brief) once it grows further.",
+    "Energy fallback in dashboard uses '—' when energy=0 — good UX, no NaN/undefined leakage.",
+    "AI caching key is (user_id, date, kind) — correct; verified by test_morning_brief_cached returning identical outfit/quote on second call same day.",
+    "All Mongo queries exclude _id projection consistently — clean."
+  ],
+  "updated_files": [
+    "/app/frontend/src/api.ts (omit body when loc missing/invalid to avoid 422)",
+    "/app/backend/tests/backend_test.py (rewritten for new POST /api/brief/morning, full CRUD, AI caching, reset)"
+  ],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "100% on flows tested (onboarding, home, priority add, quick actions, flow dashboard interactions, wind-down, settings visibility)"},
+  "seed_data_creation": "Tests prefix data with TEST_ and DELETE /api/profile/reset is invoked at suite start and end. UI test created TEST_Buy groceries priority + TEST coffee $12.50 expense which were visible in Flow dashboard ($12.50) and Wind-Down (spend-total $12.50 with delete chip).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend public URL: https://flow-morning-brief-1.preview.emergentagent.com. POST /api/brief/morning accepts optional body {lat,lon,label?}; do NOT send {} (use no body). Use DELETE /api/profile/reset for clean state. Playwright must call ctx.grant_permissions(['geolocation']) and set_geolocation({lat,lon}) BEFORE goto. Mobile viewport 390x844. All testIDs from review_request map directly to data-testid attrs. AI calls (Claude Sonnet 4.5) take 1.5–3s per call; cached daily. Morning brief test takes ~5–8s on first call.",
+  "rca_of_issue": "Bug: 422 errors on POST /api/brief/morning. RCA: api.ts always sent body=JSON.stringify(loc||{}); backend Pydantic Optional[WeatherLoc] requires that if a body is sent, lat+lon must be present, so {} fails validation. Repro: open app before granting geolocation → home tries to render brief → 422. Fix applied: api.ts now sends body only when loc has numeric lat & lon; otherwise the request goes body-less and backend treats loc as None (fallback to profile.last_lat/lon or no weather). Verified with curl: empty {} body=422, no body=200."
+}

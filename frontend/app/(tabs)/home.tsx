@@ -7,30 +7,46 @@ import {
   RefreshControl,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
+import Animated, { FadeInDown, FadeIn, Layout } from 'react-native-reanimated';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { COLORS, RADIUS, SPACING } from '../../src/theme';
 import GlassCard from '../../src/components/GlassCard';
+import AddPriorityModal from '../../src/components/AddPriorityModal';
+import AddExpenseModal from '../../src/components/AddExpenseModal';
 import { api } from '../../src/api';
+import { getCurrentCoords } from '../../src/location';
 
-type QuickAction = { id: string; label: string; icon: string };
-type Priority = { id: string; title: string; time: string; category: string; done: boolean };
+type Priority = {
+  id: string;
+  title: string;
+  time?: string;
+  category?: string;
+  done: boolean;
+};
 
-const QA_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
-  coffee: 'cafe-outline',
-  car: 'car-outline',
-  droplet: 'water-outline',
-  divide: 'receipt-outline',
+const WEATHER_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  sunny: 'sunny',
+  moon: 'moon',
+  'partly-sunny': 'partly-sunny',
+  'cloudy-night': 'cloudy-night',
+  cloudy: 'cloudy',
+  rainy: 'rainy',
+  snow: 'snow',
+  thunderstorm: 'thunderstorm',
 };
 
 const CAT_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   Work: 'briefcase-outline',
-  Connect: 'people-outline',
+  Personal: 'happy-outline',
   Health: 'pulse-outline',
+  Connect: 'people-outline',
+  Errand: 'bag-outline',
+  Task: 'ellipse-outline',
 };
 
 export default function HomeScreen() {
@@ -38,11 +54,23 @@ export default function HomeScreen() {
   const [brief, setBrief] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [donePriorities, setDonePriorities] = useState<Set<string>>(new Set());
+  const [locDenied, setLocDenied] = useState(false);
+  const [addingPriority, setAddingPriority] = useState(false);
+  const [addingExpense, setAddingExpense] = useState(false);
+  const [editingPriority, setEditingPriority] = useState<Priority | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const flashToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 1600);
+  };
 
   const load = useCallback(async () => {
     try {
-      const data = await api.morningBrief();
+      const coords = await getCurrentCoords();
+      if (!coords) setLocDenied(true);
+      else setLocDenied(false);
+      const data = await api.morningBrief(coords ? { lat: coords.lat, lon: coords.lon } : undefined);
       setBrief(data);
     } catch (e) {
       console.log('brief error', e);
@@ -56,18 +84,83 @@ export default function HomeScreen() {
     load();
   }, [load]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    load();
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading) load();
+    }, [load, loading])
+  );
+
+  const togglePriority = async (p: Priority) => {
+    const nextDone = !p.done;
+    setBrief((b: any) => ({
+      ...b,
+      priorities: b.priorities.map((x: Priority) =>
+        x.id === p.id ? { ...x, done: nextDone } : x
+      ),
+    }));
+    try {
+      await api.updatePriority(p.id, { done: nextDone });
+      if (nextDone) flashToast('Nice. One less thing.');
+    } catch {}
   };
 
-  const togglePriority = (id: string) => {
-    setDonePriorities((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const confirmDeletePriority = (p: Priority) => {
+    const doDelete = async () => {
+      await api.deletePriority(p.id);
+      setBrief((b: any) => ({
+        ...b,
+        priorities: b.priorities.filter((x: Priority) => x.id !== p.id),
+      }));
+      flashToast('Removed');
+    };
+    if (typeof window !== 'undefined' && window.confirm) {
+      if (window.confirm(`Delete "${p.title}"?`)) doDelete();
+    } else {
+      Alert.alert('Delete priority', `Delete "${p.title}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
+
+  const handleQuickAction = async (action: string) => {
+    try {
+      if (action === 'water') {
+        await api.addWater();
+        flashToast('+1 glass of water');
+      } else if (action === 'focus') {
+        await api.addFocus(15);
+        flashToast('+15 minutes of focus');
+      } else if (action === 'expense') {
+        setAddingExpense(true);
+      } else if (action === 'chat') {
+        router.push('/(tabs)/decide');
+      }
+    } catch {}
+  };
+
+  const saveNewPriority = async (body: any) => {
+    const created = await api.createPriority(body);
+    setBrief((b: any) => ({
+      ...b,
+      priorities: [...(b.priorities || []), created],
+    }));
+    flashToast('Priority added');
+  };
+
+  const saveEditPriority = async (body: any) => {
+    if (!editingPriority) return;
+    const updated = await api.updatePriority(editingPriority.id, body);
+    setBrief((b: any) => ({
+      ...b,
+      priorities: b.priorities.map((x: Priority) => (x.id === updated.id ? updated : x)),
+    }));
+    setEditingPriority(null);
+  };
+
+  const saveExpense = async (body: any) => {
+    await api.createExpense(body);
+    flashToast(`Added $${body.amount.toFixed(2)}`);
   };
 
   if (loading || !brief) {
@@ -78,10 +171,14 @@ export default function HomeScreen() {
     );
   }
 
+  const weather = brief.weather;
+  const totalPriorities = brief.priorities?.length || 0;
+  const leftCount = totalPriorities - (brief.priorities?.filter((p: any) => p.done).length || 0);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']} testID="screen-morning-brief">
       <LinearGradient
-        colors={['rgba(255,255,255,0.10)', 'rgba(0,0,0,0)']}
+        colors={['rgba(255,255,255,0.06)', 'rgba(0,0,0,0)']}
         style={styles.topGlow}
         pointerEvents="none"
       />
@@ -91,152 +188,253 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={onRefresh}
+            onRefresh={() => {
+              setRefreshing(true);
+              load();
+            }}
             tintColor={COLORS.primary}
           />
         }
       >
-        {/* Header */}
         <Animated.View entering={FadeIn.duration(400)} style={styles.header}>
-          <Text style={styles.overline} testID="home-date">{brief.date.toUpperCase()}</Text>
+          <Text style={styles.overline} testID="home-date">
+            {brief.date.toUpperCase()}
+            {brief.location_label ? ` · ${brief.location_label.toUpperCase()}` : ''}
+          </Text>
           <Text style={styles.greeting} testID="home-greeting">
             {brief.greeting},{'\n'}
-            <Text style={{ color: COLORS.primary }}>{brief.name}.</Text>
+            {brief.name}.
           </Text>
         </Animated.View>
 
-        {/* Weather + Outfit card */}
+        {/* Weather + Outfit */}
         <Animated.View entering={FadeInDown.duration(500).delay(100)}>
-          <GlassCard glow testID="card-weather-summary">
-            <View style={styles.weatherRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardLabel}>TODAY</Text>
-                <View style={styles.tempRow}>
-                  <Text style={styles.temp}>{brief.weather.temp}°</Text>
-                  <Text style={styles.tempUnit}>{brief.weather.unit}</Text>
+          {weather ? (
+            <GlassCard glow testID="card-weather-summary">
+              <View style={styles.weatherRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardLabel}>
+                    TODAY{weather.label ? ` · ${weather.label.toUpperCase()}` : ''}
+                  </Text>
+                  <View style={styles.tempRow}>
+                    <Text style={styles.temp}>{weather.temp}°</Text>
+                    <Text style={styles.tempUnit}>{weather.unit}</Text>
+                  </View>
+                  <Text style={styles.condition}>{weather.condition}</Text>
+                  <Text style={styles.highLow}>
+                    H {weather.high}° · L {weather.low}°
+                    {weather.rain_probability > 20
+                      ? ` · ${weather.rain_probability}% rain`
+                      : ''}
+                  </Text>
                 </View>
-                <Text style={styles.condition}>{brief.weather.condition}</Text>
-                <Text style={styles.highLow}>
-                  H {brief.weather.high}° · L {brief.weather.low}°
+                <View style={styles.weatherIconBox}>
+                  <Ionicons
+                    name={WEATHER_ICONS[weather.icon] || 'partly-sunny'}
+                    size={72}
+                    color={COLORS.text}
+                  />
+                </View>
+              </View>
+              {brief.outfit && (
+                <>
+                  <View style={styles.divider} />
+                  <Text style={styles.cardLabel}>OUTFIT · AI SUGGESTED</Text>
+                  <Text style={styles.outfitText}>{brief.outfit.suggestion}</Text>
+                  <Text style={styles.outfitReason}>{brief.outfit.reason}</Text>
+                </>
+              )}
+            </GlassCard>
+          ) : (
+            <Pressable
+              onPress={load}
+              style={styles.locCard}
+              testID="enable-location-btn"
+            >
+              <Ionicons name="location-outline" size={20} color={COLORS.text} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.locTitle}>
+                  {locDenied ? 'Enable location' : 'Fetching your weather…'}
+                </Text>
+                <Text style={styles.locSub}>
+                  {locDenied
+                    ? 'Flow needs location to show real-time weather and outfit ideas.'
+                    : 'One moment…'}
                 </Text>
               </View>
-              <View style={styles.weatherIconBox}>
-                <Ionicons name="partly-sunny" size={64} color={COLORS.primary} />
-              </View>
-            </View>
-            <View style={styles.divider} />
-            <Text style={styles.cardLabel}>OUTFIT · SUGGESTED</Text>
-            <Text style={styles.outfitText}>{brief.outfit.suggestion}</Text>
-            <Text style={styles.outfitReason}>{brief.outfit.reason}</Text>
-          </GlassCard>
+              <Ionicons name="refresh" size={18} color={COLORS.textSecondary} />
+            </Pressable>
+          )}
         </Animated.View>
 
         {/* Priorities */}
         <Animated.View entering={FadeInDown.duration(500).delay(200)} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Today's focus</Text>
-            <Text style={styles.sectionCount}>
-              {brief.priorities.length - donePriorities.size} left
-            </Text>
+            <Text style={styles.sectionTitle}>Today&apos;s focus</Text>
+            <Pressable
+              onPress={() => setAddingPriority(true)}
+              style={styles.addBtn}
+              testID="add-priority-btn"
+              hitSlop={8}
+            >
+              <Ionicons name="add" size={18} color={COLORS.bg} />
+            </Pressable>
           </View>
-          {brief.priorities.map((p: Priority, i: number) => {
-            const done = donePriorities.has(p.id);
-            return (
+          {totalPriorities > 0 && (
+            <Text style={styles.sectionSub} testID="priorities-counter">
+              {leftCount === 0 ? 'All done. Breathe.' : `${leftCount} left`}
+            </Text>
+          )}
+
+          {totalPriorities === 0 ? (
+            <Pressable
+              onPress={() => setAddingPriority(true)}
+              style={styles.emptyCard}
+              testID="priorities-empty"
+            >
+              <Ionicons name="leaf-outline" size={28} color={COLORS.textSecondary} />
+              <Text style={styles.emptyTitle}>A quiet canvas.</Text>
+              <Text style={styles.emptySub}>
+                Tap &quot;+&quot; to add your first small intention for today.
+              </Text>
+            </Pressable>
+          ) : (
+            brief.priorities.map((p: Priority, i: number) => (
               <Animated.View
                 key={p.id}
-                entering={FadeInDown.duration(400).delay(300 + i * 80)}
+                entering={FadeInDown.duration(400).delay(80 + i * 60)}
+                layout={Layout.springify()}
               >
                 <Pressable
-                  onPress={() => togglePriority(p.id)}
+                  onPress={() => togglePriority(p)}
+                  onLongPress={() => confirmDeletePriority(p)}
                   style={({ pressed }) => [
                     styles.priorityItem,
                     pressed && { opacity: 0.7 },
                   ]}
                   testID={`priority-${p.id}`}
                 >
-                  <View style={[styles.checkCircle, done && styles.checkCircleDone]}>
-                    {done && <Ionicons name="checkmark" size={16} color={COLORS.bg} />}
+                  <View style={[styles.checkCircle, p.done && styles.checkCircleDone]}>
+                    {p.done && <Ionicons name="checkmark" size={14} color={COLORS.bg} />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text
-                      style={[styles.priorityTitle, done && styles.priorityDone]}
+                      style={[styles.priorityTitle, p.done && styles.priorityDone]}
                       numberOfLines={1}
                     >
                       {p.title}
                     </Text>
                     <View style={styles.priorityMeta}>
                       <Ionicons
-                        name={CAT_ICON[p.category] || 'ellipse-outline'}
-                        size={12}
+                        name={CAT_ICON[p.category || 'Task'] || 'ellipse-outline'}
+                        size={11}
                         color={COLORS.textTertiary}
                       />
                       <Text style={styles.priorityMetaText}>
-                        {p.category} · {p.time}
+                        {p.category || 'Task'}
+                        {p.time ? ` · ${p.time}` : ''}
                       </Text>
                     </View>
                   </View>
+                  <Pressable
+                    onPress={() => setEditingPriority(p)}
+                    hitSlop={8}
+                    style={styles.editDot}
+                    testID={`priority-edit-${p.id}`}
+                  >
+                    <Ionicons name="create-outline" size={16} color={COLORS.textTertiary} />
+                  </Pressable>
                 </Pressable>
               </Animated.View>
-            );
-          })}
+            ))
+          )}
+          {totalPriorities > 0 && (
+            <Text style={styles.hint}>Long-press to delete · tap pencil to edit</Text>
+          )}
         </Animated.View>
 
         {/* Quote */}
-        <Animated.View entering={FadeInDown.duration(500).delay(450)}>
-          <GlassCard testID="card-quote" style={{ marginTop: SPACING.lg }}>
-            <Text style={styles.quoteMark}>&ldquo;</Text>
-            <Text style={styles.quoteText}>{brief.quote.text}</Text>
-            <Text style={styles.quoteAuthor}>— {brief.quote.author}</Text>
-          </GlassCard>
-        </Animated.View>
+        {brief.quote && (
+          <Animated.View entering={FadeInDown.duration(500).delay(300)}>
+            <GlassCard testID="card-quote" style={{ marginTop: SPACING.lg }}>
+              <Text style={styles.quoteMark}>&ldquo;</Text>
+              <Text style={styles.quoteText}>{brief.quote.text}</Text>
+              <Text style={styles.quoteAuthor}>— {brief.quote.author}</Text>
+            </GlassCard>
+          </Animated.View>
+        )}
 
         {/* Quick actions */}
-        <Animated.View entering={FadeInDown.duration(500).delay(550)} style={styles.section}>
+        <Animated.View entering={FadeInDown.duration(500).delay(400)} style={styles.section}>
           <Text style={styles.sectionTitle}>One-tap</Text>
           <View style={styles.quickGrid}>
-            {brief.quick_actions.map((qa: QuickAction) => (
-              <Pressable
-                key={qa.id}
-                style={styles.quickAction}
-                testID={`quick-action-${qa.id}`}
-              >
-                <View style={styles.quickIcon}>
-                  <Ionicons
-                    name={QA_ICON[qa.icon] || 'flash-outline'}
-                    size={20}
-                    color={COLORS.primary}
-                  />
-                </View>
-                <Text style={styles.quickLabel}>{qa.label}</Text>
-              </Pressable>
-            ))}
+            {(brief.quick_actions || []).map((qa: any) => {
+              const icon: keyof typeof Ionicons.glyphMap =
+                qa.icon === 'droplet'
+                  ? 'water-outline'
+                  : qa.icon === 'focus'
+                    ? 'timer-outline'
+                    : qa.icon === 'expense'
+                      ? 'receipt-outline'
+                      : 'sparkles-outline';
+              return (
+                <Pressable
+                  key={qa.id}
+                  onPress={() => handleQuickAction(qa.action)}
+                  style={styles.quickAction}
+                  testID={`quick-action-${qa.action}`}
+                >
+                  <View style={styles.quickIcon}>
+                    <Ionicons name={icon} size={18} color={COLORS.text} />
+                  </View>
+                  <Text style={styles.quickLabel}>{qa.label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </Animated.View>
 
-        {/* Ask Flow CTA */}
-        <Animated.View entering={FadeInDown.duration(500).delay(650)}>
+        <Animated.View entering={FadeInDown.duration(500).delay(500)}>
           <Pressable
             onPress={() => router.push('/(tabs)/decide')}
             style={styles.askCta}
             testID="home-ask-flow-cta"
           >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.06)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Ionicons name="sparkles" size={20} color={COLORS.primary} />
+            <Ionicons name="sparkles" size={18} color={COLORS.text} />
             <View style={{ flex: 1 }}>
               <Text style={styles.askTitle}>Ask Flow</Text>
               <Text style={styles.askSub}>&ldquo;What should I eat for lunch?&rdquo;</Text>
             </View>
-            <Ionicons name="arrow-forward" size={18} color={COLORS.primary} />
+            <Ionicons name="arrow-forward" size={16} color={COLORS.text} />
           </Pressable>
         </Animated.View>
 
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      {toast && (
+        <View style={styles.toast} pointerEvents="none" testID="toast">
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      )}
+
+      <AddPriorityModal
+        visible={addingPriority}
+        onClose={() => setAddingPriority(false)}
+        onSave={saveNewPriority}
+      />
+      <AddPriorityModal
+        visible={!!editingPriority}
+        onClose={() => setEditingPriority(null)}
+        onSave={saveEditPriority}
+        initial={editingPriority || undefined}
+        editing
+      />
+      <AddExpenseModal
+        visible={addingExpense}
+        onClose={() => setAddingExpense(false)}
+        onSave={saveExpense}
+      />
     </SafeAreaView>
   );
 }
@@ -244,19 +442,13 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   loading: { flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
-  topGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 260,
-  },
+  topGlow: { position: 'absolute', top: 0, left: 0, right: 0, height: 260 },
   scroll: { paddingHorizontal: SPACING.xl, paddingTop: SPACING.md },
   header: { marginBottom: SPACING.xxl, marginTop: SPACING.md },
   overline: {
     color: COLORS.textTertiary,
     fontSize: 11,
-    letterSpacing: 2.4,
+    letterSpacing: 2.2,
     fontWeight: '600',
     marginBottom: SPACING.sm,
   },
@@ -311,21 +503,52 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   outfitReason: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 18 },
+  locCard: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+    alignItems: 'center',
+    padding: SPACING.lg,
+    borderRadius: RADIUS.xl,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  locTitle: { color: COLORS.text, fontSize: 14, fontWeight: '600' },
+  locSub: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
   section: { marginTop: SPACING.xxl },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: SPACING.md,
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
   },
   sectionTitle: {
     color: COLORS.text,
     fontSize: 20,
     fontWeight: '600',
     letterSpacing: -0.5,
-    marginBottom: SPACING.md,
   },
-  sectionCount: { color: COLORS.primary, fontSize: 13, fontWeight: '500' },
+  sectionSub: { color: COLORS.textSecondary, fontSize: 13, marginBottom: SPACING.md },
+  addBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCard: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.xl,
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: SPACING.sm,
+  },
+  emptyTitle: { color: COLORS.text, fontSize: 16, fontWeight: '600', marginTop: 4 },
+  emptySub: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 18 },
   priorityItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -338,27 +561,29 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   checkCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkCircleDone: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
+  checkCircleDone: { backgroundColor: COLORS.text, borderColor: COLORS.text },
   priorityTitle: { color: COLORS.text, fontSize: 15, fontWeight: '500' },
-  priorityDone: {
-    color: COLORS.textTertiary,
-    textDecorationLine: 'line-through',
-  },
+  priorityDone: { color: COLORS.textTertiary, textDecorationLine: 'line-through' },
   priorityMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
   priorityMetaText: { color: COLORS.textTertiary, fontSize: 12 },
+  editDot: { padding: 4 },
+  hint: {
+    color: COLORS.textTertiary,
+    fontSize: 11,
+    marginTop: SPACING.sm,
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
   quoteMark: {
-    color: COLORS.primary,
+    color: COLORS.text,
     fontSize: 42,
     lineHeight: 36,
     fontWeight: '700',
@@ -378,7 +603,12 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     letterSpacing: 0.5,
   },
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
+    marginTop: SPACING.md,
+  },
   quickAction: {
     width: '48%',
     backgroundColor: COLORS.surface,
@@ -391,10 +621,12 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   quickIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -403,14 +635,24 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xl,
     borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
+    borderColor: COLORS.glassBorder,
+    backgroundColor: COLORS.surfaceElevated,
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.xl,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
-    overflow: 'hidden',
   },
   askTitle: { color: COLORS.text, fontSize: 15, fontWeight: '600' },
   askSub: { color: COLORS.textSecondary, fontSize: 13, marginTop: 2 },
+  toast: {
+    position: 'absolute',
+    bottom: 120,
+    alignSelf: 'center',
+    backgroundColor: COLORS.text,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 10,
+    borderRadius: RADIUS.pill,
+  },
+  toastText: { color: COLORS.bg, fontSize: 13, fontWeight: '600' },
 });
