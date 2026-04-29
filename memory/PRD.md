@@ -1,35 +1,54 @@
 # Flow — Life, but easier.
 
 ## Overview
-Flow is an AI-powered Daily Life OS mobile app — a calm, premium companion that handles tiny daily decisions so you can focus on living. Minimal black-and-white aesthetic, dark-mode-first, 10+ opens a day.
+Flow is an AI-powered Daily Life OS mobile app. **All data is real and user-owned** — no mocks anywhere. Minimal black-and-white aesthetic, dark-mode-first.
 
 ## Tech Stack
-- **Frontend**: React Native Expo SDK 54, Expo Router, Reanimated 4, expo-linear-gradient, Ionicons
+- **Frontend**: React Native Expo SDK 54, Expo Router, Reanimated 4, expo-linear-gradient, expo-location, Ionicons
 - **Backend**: FastAPI + Motor (async MongoDB)
 - **AI**: Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) via Emergent Universal LLM Key
-- **Storage**: MongoDB (`chat_messages`, `profiles`)
+- **Weather**: Open-Meteo (no API key needed), Nominatim reverse geocode
+- **Storage**: MongoDB (`profiles`, `priorities`, `expenses`, `habits`, `ai_cache`, `chat_messages`)
 
-## Design System
-- **Palette**: Pure black (#000), near-black surface (#0D0D0D), subtle borders (#1F1F1F), monochrome accents (whites through greys)
-- **Typography**: System / SF Pro with tight letter-spacing, generous whitespace
-- **Motion**: Reanimated staggered `FadeInDown`, pulsing FAB halo
+## Real Data Pipeline
+- **Weather**: device geolocation → Open-Meteo → live temp, condition, high/low, rain %
+- **Outfit & Quote**: Claude generates both from real weather each morning; cached per user per day
+- **Priorities / Expenses**: full CRUD, user-created, stored per-user in MongoDB
+- **Habits**: water glasses + focused minutes + self-reported energy (1–5) logged via quick taps
+- **Flow Dashboard** & **Evening Recap**: computed server-side from real data + AI insights
 
 ## Screens
-1. **Home — Morning Brief** — greeting, weather+outfit glass card, 3 toggleable priorities, quote, one-tap actions, "Ask Flow" CTA
-2. **Flow Dashboard** — bento of 5 cards: Time (wide) · Money + Health (split) · Connections (wide) · Energy (progress)
-3. **Decide (center FAB)** — real-time AI chat with Claude Sonnet 4.5, 6 suggestion chips, multi-turn persisted history, clear button
-4. **Wind-Down** — stats grid (steps/focus/screen/sleep), spending breakdown bars, gentle insights, tomorrow card, reflection prompt
-5. **Settings** — avatar, inline name edit, Family Sharing / AI Training / Notifications / Voice toggles (all persisted), theme, language, about
+1. **Onboarding** — first-run name entry, animated orb, privacy promise
+2. **Home / Morning Brief** — real weather+city, AI outfit, editable priorities with empty state, AI daily quote, one-tap habit actions
+3. **Flow Dashboard** — 5 interactive bento cards (Time / Money / Health / Connections / Energy). Tap actions log data instantly.
+4. **Decide (FAB)** — multi-turn Claude chat with suggestion chips, persisted history
+5. **Wind-Down** — recap, stat tiles, spending breakdown with inline add/delete, AI insights, tomorrow preview
+6. **Settings** — name edit, privacy-first toggles, reset all data (returns to onboarding)
 
-## API (/api prefix)
-- `GET /brief/morning`, `GET /brief/evening` — mock daily briefs
-- `GET /flow/dashboard` — 5-card monochrome dashboard
-- `GET/PUT /profile` — profile with privacy toggles
-- `POST /chat`, `GET /chat/history/{sid}`, `DELETE /chat/history/{sid}`, `GET /chat/suggestions` — real AI
+## Key APIs (all /api prefix)
+- `GET /weather?lat=&lon=` — live weather + city label
+- `POST /brief/morning` (optional body `{lat, lon}`) — real weather + AI outfit + AI quote + priorities
+- `GET /brief/evening` — computed recap
+- `GET /flow/dashboard` — computed cards
+- `GET/POST /priorities`, `PUT/DELETE /priorities/{id}`
+- `GET/POST /expenses`, `DELETE /expenses/{id}`
+- `GET /habits`, `POST /habits/water`, `POST /habits/water/decrement`, `POST /habits/focus`, `PUT /habits/energy`
+- `GET/PUT /profile`, `DELETE /profile/reset`
+- `POST /chat`, `GET /chat/history/{sid}`, `DELETE /chat/history/{sid}`, `GET /chat/suggestions`
+
+## QoL Additions
+- Toast feedback on every action ("+1 glass", "Priority added")
+- Pull-to-refresh on all data screens
+- Tab re-focus auto-refreshes via `useFocusEffect`
+- Empty states with helpful prompts
+- Edit / delete (long-press) for priorities
+- Inline expense list with delete
+- Onboarding with privacy reassurance
+- Reset All Data for clean restart
 
 ## Freemium Hook
-"Flow Pro" upgrade banner on Flow Dashboard + "Free plan" badge in profile — UI only, monetization-ready.
+"Flow Pro" banner on Flow Dashboard with "Try free" CTA — UI ready, monetization pending.
 
 ## Testing
-- 11/11 backend pytest passing (see `/app/backend/tests/backend_test.py`)
-- Full Playwright UI pass — all 5 screens, AI chat, priority toggles, profile persistence verified
+- **24/24 backend pytest tests pass** (Open-Meteo, Claude AI, CRUD, cache, reset)
+- Full Playwright E2E verified — onboarding, CRUD flows, AI interactions all working

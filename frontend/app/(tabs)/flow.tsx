@@ -11,10 +11,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { COLORS, RADIUS, SPACING } from '../../src/theme';
 import AddExpenseModal from '../../src/components/AddExpenseModal';
+import FocusTimerModal from '../../src/components/FocusTimerModal';
 import { api } from '../../src/api';
+import { haptic } from '../../src/haptics';
 
 type Card = {
   id: string;
@@ -37,10 +39,13 @@ const CARD_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 export default function FlowScreen() {
+  const router = useRouter();
   const [cards, setCards] = useState<Card[]>([]);
+  const [streaks, setStreaks] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [addingExpense, setAddingExpense] = useState(false);
+  const [focusOpen, setFocusOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const flashToast = (msg: string) => {
@@ -50,8 +55,9 @@ export default function FlowScreen() {
 
   const load = useCallback(async () => {
     try {
-      const data = await api.flowDashboard();
-      setCards(data.cards);
+      const [d, s] = await Promise.all([api.flowDashboard(), api.habitsStreaks()]);
+      setCards(d.cards);
+      setStreaks(s);
     } catch (e) {
       console.log(e);
     } finally {
@@ -67,20 +73,18 @@ export default function FlowScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const incrementWater = async () => {
+    haptic.light();
     await api.addWater();
     flashToast('+1 glass');
     load();
   };
   const decrementWater = async () => {
+    haptic.selection();
     await api.removeWater();
     load();
   };
-  const addFocus = async () => {
-    await api.addFocus(15);
-    flashToast('+15 min focus');
-    load();
-  };
   const setEnergy = async (rating: number) => {
+    haptic.medium();
     await api.setEnergy(rating);
     flashToast('Energy updated');
     load();
@@ -88,6 +92,7 @@ export default function FlowScreen() {
 
   const saveExpense = async (body: any) => {
     await api.createExpense(body);
+    haptic.success();
     flashToast(`Added $${body.amount.toFixed(2)}`);
     load();
   };
@@ -128,7 +133,37 @@ export default function FlowScreen() {
           <Text style={styles.subtitle}>Tap any card to update a metric in real time.</Text>
         </Animated.View>
 
-        {/* Time — wide with add focus */}
+        {/* Streak pills */}
+        {streaks && (streaks.water_streak > 0 || streaks.focus_streak > 0) && (
+          <Animated.View entering={FadeInDown.duration(500).delay(40)} style={styles.streakRow}>
+            {streaks.water_streak > 0 && (
+              <Pressable
+                onPress={() => router.push('/insights')}
+                style={styles.streakPill}
+                testID="streak-water"
+              >
+                <Ionicons name="flame" size={13} color={COLORS.text} />
+                <Text style={styles.streakText}>
+                  {streaks.water_streak}-day water streak
+                </Text>
+              </Pressable>
+            )}
+            {streaks.focus_streak > 0 && (
+              <Pressable
+                onPress={() => router.push('/insights')}
+                style={styles.streakPill}
+                testID="streak-focus"
+              >
+                <Ionicons name="flame" size={13} color={COLORS.text} />
+                <Text style={styles.streakText}>
+                  {streaks.focus_streak}-day focus streak
+                </Text>
+              </Pressable>
+            )}
+          </Animated.View>
+        )}
+
+        {/* Time — wide with focus timer */}
         {timeCard && (
           <Animated.View entering={FadeInDown.duration(500).delay(80)}>
             <View style={[styles.card, styles.cardWide]} testID="flow-card-time">
@@ -140,9 +175,16 @@ export default function FlowScreen() {
               </View>
               <View style={styles.cardActions}>
                 <Text style={styles.deltaText}>{timeCard.delta}</Text>
-                <Pressable style={styles.cardBtn} onPress={addFocus} testID="flow-focus-add">
-                  <Ionicons name="add" size={14} color={COLORS.bg} />
-                  <Text style={styles.cardBtnText}>15m focus</Text>
+                <Pressable
+                  style={styles.cardBtn}
+                  onPress={() => {
+                    haptic.medium();
+                    setFocusOpen(true);
+                  }}
+                  testID="flow-focus-open"
+                >
+                  <Ionicons name="play" size={12} color={COLORS.bg} />
+                  <Text style={styles.cardBtnText}>Start focus</Text>
                 </Pressable>
               </View>
             </View>
@@ -259,6 +301,14 @@ export default function FlowScreen() {
         onClose={() => setAddingExpense(false)}
         onSave={saveExpense}
       />
+      <FocusTimerModal
+        visible={focusOpen}
+        onClose={() => setFocusOpen(false)}
+        onSaved={() => {
+          flashToast('Focus saved');
+          load();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -304,6 +354,24 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   subtitle: { color: COLORS.textSecondary, fontSize: 14, lineHeight: 20 },
+  streakRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginBottom: SPACING.lg,
+    flexWrap: 'wrap',
+  },
+  streakPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  streakText: { color: COLORS.text, fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
   row: { flexDirection: 'row', gap: SPACING.md, marginBottom: SPACING.md },
   rowSmall: {
     flexDirection: 'row',

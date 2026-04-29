@@ -1,22 +1,41 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
-    "version": "1.0.0",
+    "name": "Flow — Life, but easier.",
+    "slug": "flow-daily-life-os",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
-    "userInterfaceStyle": "automatic",
+    "scheme": "flow",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "description": "Your calm AI daily co-pilot. Real weather, tiny decisions, and a quieter day — all in one place.",
+    "primaryColor": "#000000",
+    "backgroundColor": "#000000",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.flowapp.daily",
+      "buildNumber": "1.1.0",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Flow uses your location to show live weather and outfit suggestions.",
+        "NSMicrophoneUsageDescription": "Flow uses your microphone only when you tap to talk to the AI assistant.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.flowapp.daily",
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000"
+        "backgroundColor": "#000000"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "RECORD_AUDIO",
+        "INTERNET",
+        "VIBRATE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -29,15 +48,25 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "imageWidth": 160,
           "resizeMode": "contain",
-          "backgroundColor": "#000"
+          "backgroundColor": "#000000"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Flow uses your location to show live weather and outfit suggestions."
         }
       ],
       "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "supportEmail": "hello@flowapp.daily",
+      "legalWebsite": "https://flowapp.daily"
     }
   }
 }

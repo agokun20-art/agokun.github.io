@@ -857,6 +857,85 @@ async def reset_all(user_id: str = DEFAULT_USER):
     return {"reset": True}
 
 
+@api_router.get("/profile/export")
+async def export_data(user_id: str = DEFAULT_USER):
+    profile = await db.profiles.find_one({"user_id": user_id}, {"_id": 0})
+    priorities = await db.priorities.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
+    expenses = await db.expenses.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
+    habits = await db.habits.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
+    return {
+        "exported_at": now_iso(),
+        "profile": profile,
+        "priorities": priorities,
+        "expenses": expenses,
+        "habits": habits,
+    }
+
+
+@api_router.get("/habits/history")
+async def habits_history(user_id: str = DEFAULT_USER, days: int = 7):
+    days = max(1, min(90, int(days)))
+    out = []
+    for i in range(days - 1, -1, -1):
+        d = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        doc = await db.habits.find_one({"user_id": user_id, "date": d}, {"_id": 0})
+        out.append({
+            "date": d,
+            "water_glasses": (doc or {}).get("water_glasses", 0),
+            "focused_minutes": (doc or {}).get("focused_minutes", 0),
+            "energy_rating": (doc or {}).get("energy_rating", 0),
+        })
+    return {"history": out}
+
+
+@api_router.get("/habits/streaks")
+async def habits_streaks(user_id: str = DEFAULT_USER):
+    profile = await get_profile_doc(user_id)
+    water_goal = profile.get("water_goal", 8)
+    focus_goal = profile.get("focus_goal", 180)
+
+    def compute_streak(docs_by_date: dict, goal_key: str, goal: int, include_today: bool) -> int:
+        streak = 0
+        day = datetime.now()
+        # Start today (if met) or yesterday
+        if not include_today:
+            day = day - timedelta(days=1)
+        while True:
+            key = day.strftime("%Y-%m-%d")
+            doc = docs_by_date.get(key)
+            if not doc:
+                break
+            if doc.get(goal_key, 0) >= goal:
+                streak += 1
+                day = day - timedelta(days=1)
+            else:
+                break
+        return streak
+
+    # Fetch last 60 days
+    start = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
+    docs = await db.habits.find(
+        {"user_id": user_id, "date": {"$gte": start}}, {"_id": 0}
+    ).to_list(200)
+    by_date = {d["date"]: d for d in docs}
+
+    today_key = datetime.now().strftime("%Y-%m-%d")
+    today_doc = by_date.get(today_key, {})
+
+    water_today_met = today_doc.get("water_glasses", 0) >= water_goal
+    focus_today_met = today_doc.get("focused_minutes", 0) >= focus_goal
+
+    water_streak = compute_streak(by_date, "water_glasses", water_goal, water_today_met)
+    focus_streak = compute_streak(by_date, "focused_minutes", focus_goal, focus_today_met)
+
+    return {
+        "water_streak": water_streak,
+        "focus_streak": focus_streak,
+        "water_today_met": water_today_met,
+        "focus_today_met": focus_today_met,
+    }
+
+
 # ------------------ App wiring ------------------
 
 app.include_router(api_router)

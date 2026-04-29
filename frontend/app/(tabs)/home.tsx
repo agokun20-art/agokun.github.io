@@ -20,6 +20,7 @@ import AddPriorityModal from '../../src/components/AddPriorityModal';
 import AddExpenseModal from '../../src/components/AddExpenseModal';
 import { api } from '../../src/api';
 import { getCurrentCoords } from '../../src/location';
+import { haptic } from '../../src/haptics';
 
 type Priority = {
   id: string;
@@ -92,6 +93,7 @@ export default function HomeScreen() {
 
   const togglePriority = async (p: Priority) => {
     const nextDone = !p.done;
+    haptic.light();
     setBrief((b: any) => ({
       ...b,
       priorities: b.priorities.map((x: Priority) =>
@@ -100,7 +102,10 @@ export default function HomeScreen() {
     }));
     try {
       await api.updatePriority(p.id, { done: nextDone });
-      if (nextDone) flashToast('Nice. One less thing.');
+      if (nextDone) {
+        haptic.success();
+        flashToast('Nice. One less thing.');
+      }
     } catch {}
   };
 
@@ -124,6 +129,7 @@ export default function HomeScreen() {
   };
 
   const handleQuickAction = async (action: string) => {
+    haptic.light();
     try {
       if (action === 'water') {
         await api.addWater();

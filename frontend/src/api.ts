@@ -51,6 +51,8 @@ export const api = {
 
   // Habits
   getHabits: () => request<any>('/habits'),
+  habitsHistory: (days = 7) => request<any>(`/habits/history?days=${days}`),
+  habitsStreaks: () => request<any>('/habits/streaks'),
   addWater: () => request<any>('/habits/water', { method: 'POST' }),
   removeWater: () => request<any>('/habits/water/decrement', { method: 'POST' }),
   addFocus: (minutes: number) =>
@@ -69,6 +71,7 @@ export const api = {
   updateProfile: (body: any) =>
     request<any>('/profile', { method: 'PUT', body: JSON.stringify(body) }),
   resetAll: () => request<any>('/profile/reset', { method: 'DELETE' }),
+  exportData: () => request<any>('/profile/export'),
 
   // Chat
   chat: (session_id: string, message: string) =>

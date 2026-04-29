@@ -181,8 +181,55 @@ export default function SettingsScreen() {
         <Animated.View entering={FadeInDown.duration(500).delay(280)} style={styles.section}>
           <Text style={styles.sectionLabel}>ABOUT</Text>
           <View style={styles.sectionCard}>
-            <LinkRow icon="shield-checkmark-outline" title="Privacy policy" testID="privacy-row" />
-            <LinkRow icon="document-text-outline" title="Terms of service" testID="terms-row" />
+            <LinkRow
+              icon="bar-chart-outline"
+              title="Insights & streaks"
+              testID="insights-row"
+              onPress={() => router.push('/insights')}
+            />
+            <LinkRow
+              icon="download-outline"
+              title="Export your data"
+              testID="export-row"
+              onPress={async () => {
+                try {
+                  const data = await api.exportData();
+                  const json = JSON.stringify(data, null, 2);
+                  if (typeof window !== 'undefined' && (window as any).Blob) {
+                    const blob = new (window as any).Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `flow-export-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }
+                } catch {}
+              }}
+            />
+            <LinkRow
+              icon="mail-outline"
+              title="Contact support"
+              value="hello@flowapp.daily"
+              testID="support-row"
+              onPress={() => {
+                if (typeof window !== 'undefined') {
+                  (window as any).location.href = 'mailto:hello@flowapp.daily';
+                }
+              }}
+            />
+            <LinkRow
+              icon="shield-checkmark-outline"
+              title="Privacy policy"
+              testID="privacy-row"
+              onPress={() => router.push('/privacy')}
+            />
+            <LinkRow
+              icon="document-text-outline"
+              title="Terms of service"
+              testID="terms-row"
+              onPress={() => router.push('/terms')}
+            />
             <LinkRow
               icon="information-circle-outline"
               title="Version"
@@ -277,17 +324,20 @@ function LinkRow({
   value,
   last,
   testID,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   value?: string;
   last?: boolean;
   testID?: string;
+  onPress?: () => void;
 }) {
   return (
     <Pressable
       style={[styles.row, !last && styles.rowBorder]}
       testID={testID}
+      onPress={onPress}
     >
       <View style={styles.rowIcon}>
         <Ionicons name={icon} size={18} color={COLORS.textSecondary} />

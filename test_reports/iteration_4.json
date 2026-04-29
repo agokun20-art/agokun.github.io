@@ -1,0 +1,47 @@
+{
+  "summary": "Tested Flow app v3 upgrade — backend (streaks, history, export + regression) and frontend (FocusTimerModal, Insights, Privacy, Terms, Settings navigation). 16/16 backend tests pass. Frontend largely working — FocusTimerModal, Privacy/Terms nav, Insights screen (direct URL), Settings all function correctly. One UI-overlay bug: clicking insights-row in Settings navigates to /decide instead of /insights due to floating center 'Ask' FAB intercepting the tap at that scroll position.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Settings → insights-row (LinkRow)",
+        "issue": "Tapping the 'Insights & streaks' row navigates to /decide (Ask/chat) instead of /insights on 390x844 mobile viewport. The floating center FAB 'Ask' tab button overlays the row when it scrolls into view and intercepts the touch. privacy-row and terms-row below it work correctly because they land at different Y positions. Direct URL /insights loads the screen correctly with all testIDs (insights-back-btn, insights-export-btn, insights-export-cta, sparkline-focus, sparkline-water) present.",
+        "testID": "insights-row",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "global",
+       "issues": [
+         "Console warnings (non-blocking): '\"shadow*\" style props are deprecated. Use boxShadow' and 'props.pointerEvents is deprecated. Use style.pointerEvents' — React-Native-Web deprecations, safe to ignore but should be migrated."
+       ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_upgrade_v3.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix FAB overlay blocking insights-row tap in Settings. Options: (a) increase bottom padding on Settings ScrollView so insights-row cannot land under the central FAB, (b) reduce FAB hit area / move it slightly, or (c) ensure row Pressable has zIndex/elevation above the tab bar FAB. Verify by tapping insights-row on mobile viewport (390x844) — must navigate to /insights, not /decide."
+  ],
+  "critical_code_review_comments": [
+    "server.py is ~955 lines — approaching the 700-line soft limit. Consider splitting routes into routers (habits_router, brief_router, etc.) before next upgrade.",
+    "FocusTimerModal useEffect[elapsedSec] has eslint-disable for exhaustive-deps — acceptable here but double-check behavior when goalMinutes changes mid-run.",
+    "settings.tsx export-row onPress catches all errors silently (catch {}) — should show a user-visible toast on failure."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_upgrade_v3.py (new regression + new-endpoint tests)"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "~92% (all flows work except insights-row FAB overlay)"},
+  "seed_data_creation": "No seed data required. Default-user profile + today's habits were auto-created via existing endpoints during tests. Test priorities/expenses prefixed 'TEST_v3_' were created and deleted within the test run.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "New endpoints /api/habits/streaks, /api/habits/history, /api/profile/export all verified. FocusTimerModal fully functional (25:00 default, 15/25/45m presets, Start→Pause transition, Save & close persists minutes). Privacy & Terms pages render and back-btn works. Insights screen renders correctly when opened directly at /insights. Only unresolved issue: clicking insights-row in Settings routes to /decide — likely the floating 'Ask' tab FAB intercepts touches when insights-row is scrolled into view. Streak pills correctly hidden when both streaks are 0. Haptics no-op on web (Platform.OS === 'web' early return) — no crashes.",
+  "rca_of_issue": "Settings tab has 5 rows in 'ABOUT' section: insights, export, support, privacy, terms. Tapping each should call router.push or an action. In a 390x844 viewport, after scrollIntoView each row lands at a different Y. The app's (tabs)/_layout includes a floating central FAB button ('Ask Flow', visible in all screenshots) anchored at the bottom center. When insights-row scrolls into view, it appears to land within the FAB's hit zone — so the tap is captured by the FAB (pushing /decide) instead of the row. The same LinkRow component with identical structure for privacy-row and terms-row work because they land at different scroll Y positions. Reproduction: open /settings on mobile, scroll so Insights row is visible, tap it — you land on /decide. Mitigation: either increase bottom padding of Settings ScrollView (already 140px — may need more), give Pressable rows elevation/zIndex above the tab bar FAB, or make the FAB smaller/narrower. Verification: direct navigation to /insights loads the screen with all testIDs present, confirming the route and screen code are correct."
+}
