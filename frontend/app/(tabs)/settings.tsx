@@ -268,7 +268,7 @@ export default function SettingsScreen() {
           )}
         </Animated.View>
 
-        <View style={{ height: 140 }} />
+        <View style={{ height: 200 }} />
       </ScrollView>
     </SafeAreaView>
   );

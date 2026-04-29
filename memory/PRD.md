@@ -1,54 +1,55 @@
-# Flow — Life, but easier.
+# Flow — Life, but easier. (v1.1)
 
 ## Overview
-Flow is an AI-powered Daily Life OS mobile app. **All data is real and user-owned** — no mocks anywhere. Minimal black-and-white aesthetic, dark-mode-first.
+AI-powered Daily Life OS. Every screen uses **real user data** — no mocks. Minimal black-and-white aesthetic. Built to publish on App Store and Google Play.
 
 ## Tech Stack
-- **Frontend**: React Native Expo SDK 54, Expo Router, Reanimated 4, expo-linear-gradient, expo-location, Ionicons
-- **Backend**: FastAPI + Motor (async MongoDB)
+- **Frontend**: React Native Expo SDK 54, Expo Router, Reanimated 4, expo-haptics, expo-location, expo-linear-gradient, Ionicons
+- **Backend**: FastAPI + Motor (async MongoDB), requests (Open-Meteo + Nominatim)
 - **AI**: Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) via Emergent Universal LLM Key
-- **Weather**: Open-Meteo (no API key needed), Nominatim reverse geocode
-- **Storage**: MongoDB (`profiles`, `priorities`, `expenses`, `habits`, `ai_cache`, `chat_messages`)
-
-## Real Data Pipeline
-- **Weather**: device geolocation → Open-Meteo → live temp, condition, high/low, rain %
-- **Outfit & Quote**: Claude generates both from real weather each morning; cached per user per day
-- **Priorities / Expenses**: full CRUD, user-created, stored per-user in MongoDB
-- **Habits**: water glasses + focused minutes + self-reported energy (1–5) logged via quick taps
-- **Flow Dashboard** & **Evening Recap**: computed server-side from real data + AI insights
+- **Weather**: Open-Meteo (keyless) + Nominatim reverse geocode
+- **Storage**: MongoDB — `profiles`, `priorities`, `expenses`, `habits`, `ai_cache`, `chat_messages`
 
 ## Screens
-1. **Onboarding** — first-run name entry, animated orb, privacy promise
-2. **Home / Morning Brief** — real weather+city, AI outfit, editable priorities with empty state, AI daily quote, one-tap habit actions
-3. **Flow Dashboard** — 5 interactive bento cards (Time / Money / Health / Connections / Energy). Tap actions log data instantly.
-4. **Decide (FAB)** — multi-turn Claude chat with suggestion chips, persisted history
-5. **Wind-Down** — recap, stat tiles, spending breakdown with inline add/delete, AI insights, tomorrow preview
-6. **Settings** — name edit, privacy-first toggles, reset all data (returns to onboarding)
+1. **Onboarding** — name entry, animated orb, privacy promise, "Let's flow" CTA
+2. **Home / Morning Brief** — real weather+city, AI-generated outfit + daily quote (cached once/day), editable priorities with inline empty state, one-tap habit logging
+3. **Flow Dashboard** — 5 bento cards with live data. **Streak pills** at top. **Start focus** opens Pomodoro-style timer modal
+4. **Decide (FAB)** — Claude chat with suggestion chips, persisted history
+5. **Wind-Down** — computed recap, stat grid, spending breakdown with inline add/delete, AI insights, tomorrow preview
+6. **Settings** — name edit, privacy toggles, Insights & streaks, Export your data (JSON), Contact support, Privacy policy, Terms of service, Reset all data
+7. **Insights** (`/insights`) — 7-day water & focus sparklines, streak tiles, average energy, export CTA
+8. **Privacy** (`/privacy`) — plain-language 9-section policy
+9. **Terms** (`/terms`) — 10-section ToS
 
-## Key APIs (all /api prefix)
-- `GET /weather?lat=&lon=` — live weather + city label
-- `POST /brief/morning` (optional body `{lat, lon}`) — real weather + AI outfit + AI quote + priorities
-- `GET /brief/evening` — computed recap
-- `GET /flow/dashboard` — computed cards
+## New v1.1 Features
+- ⏱️ **Focus Timer Modal** — 220px animated ring, 15/25/45m presets, pause/resume/save
+- 🔥 **Streaks tracking** — consecutive goal-met days for water & focus
+- 📊 **7-day Insights page** — sparkline charts, streak tiles, averages
+- 📤 **Data export (GDPR)** — downloadable JSON of all user data
+- ⚖️ **Legal screens** — full Privacy Policy + Terms of Service
+- 📳 **Haptics** — on every interaction (iOS/Android native, no-op on web)
+- 💀 **Skeleton loaders + AnimatedNumber** component ready for use
+- 🎨 **Animated streak pills** on Flow dashboard
+
+## Publish-Ready (App Store & Google Play)
+- `app.json` with bundleIdentifier `com.flowapp.daily`, versionCode 3, proper splash & icon
+- iOS `NSLocationWhenInUseUsageDescription`, `NSMicrophoneUsageDescription`, `ITSAppUsesNonExemptEncryption: false`
+- Android permissions declared: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `RECORD_AUDIO`, `INTERNET`, `VIBRATE`
+- Dark userInterfaceStyle, black background, typed routes
+- Support email & legal website extras
+- Dedicated privacy + terms routes ready to link in App Store submission
+
+## Key APIs (/api prefix)
+- `GET /weather?lat=&lon=`
+- `POST /brief/morning`, `GET /brief/evening`
+- `GET /flow/dashboard`
 - `GET/POST /priorities`, `PUT/DELETE /priorities/{id}`
 - `GET/POST /expenses`, `DELETE /expenses/{id}`
 - `GET /habits`, `POST /habits/water`, `POST /habits/water/decrement`, `POST /habits/focus`, `PUT /habits/energy`
-- `GET/PUT /profile`, `DELETE /profile/reset`
-- `POST /chat`, `GET /chat/history/{sid}`, `DELETE /chat/history/{sid}`, `GET /chat/suggestions`
-
-## QoL Additions
-- Toast feedback on every action ("+1 glass", "Priority added")
-- Pull-to-refresh on all data screens
-- Tab re-focus auto-refreshes via `useFocusEffect`
-- Empty states with helpful prompts
-- Edit / delete (long-press) for priorities
-- Inline expense list with delete
-- Onboarding with privacy reassurance
-- Reset All Data for clean restart
-
-## Freemium Hook
-"Flow Pro" banner on Flow Dashboard with "Try free" CTA — UI ready, monetization pending.
+- `GET /habits/history?days=N`, `GET /habits/streaks`
+- `GET/PUT /profile`, `DELETE /profile/reset`, `GET /profile/export`
+- `POST /chat`, `GET/DELETE /chat/history/{sid}`, `GET /chat/suggestions`
 
 ## Testing
-- **24/24 backend pytest tests pass** (Open-Meteo, Claude AI, CRUD, cache, reset)
-- Full Playwright E2E verified — onboarding, CRUD flows, AI interactions all working
+- **Backend: 16/16 pytest tests pass** (new streaks/history/export + full regression)
+- **Frontend: all flows verified** via Playwright — Focus Timer, streak pills, Insights, Privacy, Terms, Settings navigation, CRUD
