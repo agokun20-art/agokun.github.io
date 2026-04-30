@@ -179,14 +179,33 @@ export default function SettingsScreen() {
 
         {/* About */}
         <Animated.View entering={FadeInDown.duration(500).delay(280)} style={styles.section}>
-          <Text style={styles.sectionLabel}>ABOUT</Text>
+          <Text style={styles.sectionLabel}>YOUR TOOLS</Text>
           <View style={styles.sectionCard}>
+            <LinkRow
+              icon="book-outline"
+              title="Journal"
+              testID="journal-row"
+              onPress={() => router.push('/journal')}
+            />
+            <LinkRow
+              icon="sparkles-outline"
+              title="Rituals"
+              testID="rituals-row"
+              onPress={() => router.push('/rituals')}
+            />
             <LinkRow
               icon="bar-chart-outline"
               title="Insights & streaks"
               testID="insights-row"
               onPress={() => router.push('/insights')}
+              last
             />
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.section}>
+          <Text style={styles.sectionLabel}>ABOUT</Text>
+          <View style={styles.sectionCard}>
             <LinkRow
               icon="download-outline"
               title="Export your data"
@@ -233,7 +252,7 @@ export default function SettingsScreen() {
             <LinkRow
               icon="information-circle-outline"
               title="Version"
-              value="1.1.0"
+              value="1.2.0"
               testID="version-row"
               last
             />

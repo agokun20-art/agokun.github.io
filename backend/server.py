@@ -592,6 +592,19 @@ async def morning_brief(loc: Optional[WeatherLoc] = None, user_id: str = DEFAULT
     ).sort("created_at", 1).to_list(500)
     priorities_done = sum(1 for p in priorities if p.get("done"))
 
+    # Intention for today
+    intention = await db.intentions.find_one(
+        {"user_id": user_id, "date": date_key}, {"_id": 0}
+    )
+
+    # North Star: top undone priority. Prefer one with a time, then oldest.
+    undone = [p for p in priorities if not p.get("done")]
+    def _rank(p):
+        has_time = 0 if p.get("time") else 1
+        return (has_time, p.get("created_at", ""))
+    undone.sort(key=_rank)
+    north_star = undone[0] if undone else None
+
     return {
         "greeting": greeting,
         "name": name,
@@ -602,6 +615,8 @@ async def morning_brief(loc: Optional[WeatherLoc] = None, user_id: str = DEFAULT
         "quote": quote,
         "priorities": priorities,
         "priorities_done": priorities_done,
+        "intention": intention,
+        "north_star": north_star,
         "quick_actions": [
             {"id": "qa1", "label": "Log water", "icon": "droplet", "action": "water"},
             {"id": "qa2", "label": "+15m focus", "icon": "focus", "action": "focus"},
@@ -845,6 +860,305 @@ async def root():
     return {"message": "Flow API is live", "tagline": "Life, but easier."}
 
 
+# ------------------ Intentions ------------------
+
+class IntentionBody(BaseModel):
+    word: str
+    note: Optional[str] = ""
+
+
+@api_router.get("/intention")
+async def get_intention(user_id: str = DEFAULT_USER, date: Optional[str] = None):
+    d = date or today_iso()
+    doc = await db.intentions.find_one(
+        {"user_id": user_id, "date": d}, {"_id": 0}
+    )
+    return doc or {"user_id": user_id, "date": d, "word": "", "note": ""}
+
+
+@api_router.put("/intention")
+async def set_intention(body: IntentionBody, user_id: str = DEFAULT_USER):
+    d = today_iso()
+    doc = {
+        "user_id": user_id,
+        "date": d,
+        "word": body.word.strip()[:28],
+        "note": (body.note or "").strip()[:140],
+        "updated_at": now_iso(),
+    }
+    await db.intentions.update_one(
+        {"user_id": user_id, "date": d}, {"$set": doc}, upsert=True
+    )
+    return doc
+
+
+# ------------------ Journal ------------------
+
+class JournalCreate(BaseModel):
+    content: str
+
+
+async def generate_journal_reflection(content: str) -> str:
+    prompt = (
+        "Here is a short journal entry from your friend. Respond in 1-2 warm, "
+        "grounded sentences (max 28 words total). Notice a feeling or pattern "
+        "without judging. Do not start with 'I' or advise. Mirror and gently name.\n\n"
+        f"Entry:\n{content}"
+    )
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"journal-{uuid.uuid4()}",
+            system_message="You are Flow, a calm journal companion. Be human, specific, never preachy.",
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        return (await chat.send_message(UserMessage(text=prompt))).strip()
+    except Exception:
+        logger.exception("journal reflect failed")
+        return "Noticed. Thanks for writing."
+
+
+@api_router.get("/journal")
+async def list_journal(user_id: str = DEFAULT_USER, limit: int = 50):
+    docs = await db.journal.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    return {"entries": docs}
+
+
+@api_router.post("/journal")
+async def create_journal(body: JournalCreate, user_id: str = DEFAULT_USER):
+    content = (body.content or "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty entry")
+    jid = str(uuid.uuid4())
+    doc = {
+        "id": jid,
+        "user_id": user_id,
+        "content": content[:4000],
+        "reflection": None,
+        "created_at": now_iso(),
+    }
+    await db.journal.insert_one(doc.copy())
+    reflection = await generate_journal_reflection(content)
+    await db.journal.update_one(
+        {"id": jid}, {"$set": {"reflection": reflection}}
+    )
+    doc["reflection"] = reflection
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.delete("/journal/{jid}")
+async def delete_journal(jid: str, user_id: str = DEFAULT_USER):
+    r = await db.journal.delete_one({"id": jid, "user_id": user_id})
+    return {"deleted": r.deleted_count}
+
+
+# ------------------ Rituals ------------------
+
+class RitualCreate(BaseModel):
+    name: str
+    steps: List[str]
+    emoji: Optional[str] = ""
+
+
+class RitualUpdate(BaseModel):
+    name: Optional[str] = None
+    steps: Optional[List[str]] = None
+    emoji: Optional[str] = None
+
+
+async def rituals_with_today(user_id: str) -> List[dict]:
+    docs = await db.rituals.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("created_at", 1).to_list(100)
+    d = today_iso()
+    comp = await db.ritual_completions.find(
+        {"user_id": user_id, "date": d}, {"_id": 0}
+    ).to_list(500)
+    done_ids = {c["ritual_id"] for c in comp}
+    for r in docs:
+        r["completed_today"] = r["id"] in done_ids
+    return docs
+
+
+@api_router.get("/rituals")
+async def list_rituals(user_id: str = DEFAULT_USER):
+    return {"rituals": await rituals_with_today(user_id)}
+
+
+@api_router.post("/rituals")
+async def create_ritual(body: RitualCreate, user_id: str = DEFAULT_USER):
+    steps = [s.strip() for s in (body.steps or []) if s.strip()][:8]
+    if not body.name.strip():
+        raise HTTPException(status_code=400, detail="Name required")
+    if not steps:
+        raise HTTPException(status_code=400, detail="At least one step")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "name": body.name.strip()[:40],
+        "emoji": (body.emoji or "").strip()[:4],
+        "steps": steps,
+        "created_at": now_iso(),
+    }
+    await db.rituals.insert_one(doc.copy())
+    doc["completed_today"] = False
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.put("/rituals/{rid}")
+async def update_ritual(rid: str, body: RitualUpdate, user_id: str = DEFAULT_USER):
+    update = {k: v for k, v in body.dict(exclude_unset=True).items() if v is not None}
+    if "steps" in update:
+        update["steps"] = [s.strip() for s in update["steps"] if s.strip()][:8]
+    await db.rituals.update_one({"id": rid, "user_id": user_id}, {"$set": update})
+    doc = await db.rituals.find_one({"id": rid, "user_id": user_id}, {"_id": 0})
+    return doc
+
+
+@api_router.delete("/rituals/{rid}")
+async def delete_ritual(rid: str, user_id: str = DEFAULT_USER):
+    await db.rituals.delete_many({"id": rid, "user_id": user_id})
+    await db.ritual_completions.delete_many({"ritual_id": rid, "user_id": user_id})
+    return {"ok": True}
+
+
+@api_router.post("/rituals/{rid}/complete")
+async def complete_ritual(rid: str, user_id: str = DEFAULT_USER):
+    d = today_iso()
+    await db.ritual_completions.update_one(
+        {"ritual_id": rid, "user_id": user_id, "date": d},
+        {
+            "$set": {
+                "ritual_id": rid,
+                "user_id": user_id,
+                "date": d,
+                "completed_at": now_iso(),
+            }
+        },
+        upsert=True,
+    )
+    return {"ok": True, "date": d}
+
+
+@api_router.post("/rituals/{rid}/undo")
+async def undo_ritual(rid: str, user_id: str = DEFAULT_USER):
+    d = today_iso()
+    r = await db.ritual_completions.delete_one(
+        {"ritual_id": rid, "user_id": user_id, "date": d}
+    )
+    return {"ok": True, "deleted": r.deleted_count}
+
+
+# ------------------ NL → Priority parser ------------------
+
+class ParseBody(BaseModel):
+    text: str
+
+
+@api_router.post("/parse/priority")
+async def parse_priority(body: ParseBody):
+    text = (body.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Empty")
+
+    prompt = (
+        "Parse this natural-language note into a structured priority. "
+        "Examples:\n"
+        "- 'call mom tomorrow 3pm' -> {\"title\":\"Call mom\",\"time\":\"3:00 PM\",\"category\":\"Connect\"}\n"
+        "- 'finish the pitch deck before noon' -> {\"title\":\"Finish pitch deck\",\"time\":\"11:30 AM\",\"category\":\"Work\"}\n"
+        "- 'grocery run' -> {\"title\":\"Grocery run\",\"time\":\"\",\"category\":\"Errand\"}\n\n"
+        f"Text: \"{text}\"\n\n"
+        "Category MUST be one of: Work, Personal, Health, Connect, Errand. "
+        "Time MUST be 'H:MM AM/PM' or empty. Keep title under 60 chars. "
+        "Return ONLY raw JSON (no markdown)."
+    )
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"parse-{uuid.uuid4()}",
+            system_message="You are a crisp parser. Output only JSON.",
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        reply = await chat.send_message(UserMessage(text=prompt))
+        start = reply.find("{")
+        end = reply.rfind("}")
+        if start >= 0 and end > start:
+            obj = json.loads(reply[start:end + 1])
+            cat = obj.get("category", "Personal")
+            if cat not in ("Work", "Personal", "Health", "Connect", "Errand"):
+                cat = "Personal"
+            return {
+                "title": str(obj.get("title", text))[:60].strip() or text[:60],
+                "time": str(obj.get("time", ""))[:20].strip(),
+                "category": cat,
+            }
+    except Exception:
+        logger.exception("parse failed")
+    return {"title": text[:60], "time": "", "category": "Personal"}
+
+
+# ------------------ Weekly narrative ------------------
+
+@api_router.get("/brief/weekly")
+async def weekly_brief(user_id: str = DEFAULT_USER):
+    profile = await get_profile_doc(user_id)
+    name = (profile.get("greeting_name") or profile.get("name") or "friend") or "friend"
+
+    # Past 7 days
+    start_date = (datetime.now() - timedelta(days=6)).strftime("%Y-%m-%d")
+    habits = await db.habits.find(
+        {"user_id": user_id, "date": {"$gte": start_date}}, {"_id": 0}
+    ).to_list(100)
+    expenses = await db.expenses.find(
+        {"user_id": user_id, "date": {"$gte": start_date}}, {"_id": 0}
+    ).to_list(1000)
+    priorities = await db.priorities.find({"user_id": user_id}, {"_id": 0}).to_list(500)
+
+    total_focus = sum(h.get("focused_minutes", 0) for h in habits)
+    total_water = sum(h.get("water_glasses", 0) for h in habits)
+    total_spent = round(sum(e["amount"] for e in expenses), 2)
+    done = sum(1 for p in priorities if p.get("done"))
+    journal_count = await db.journal.count_documents(
+        {"user_id": user_id, "created_at": {"$gte": start_date + "T00:00:00Z"}}
+    )
+
+    prompt = (
+        f"Write a warm, specific 3-sentence narrative (max 60 words) of {name}'s past 7 days.\n"
+        f"Data: focused {total_focus} minutes total; drank {total_water} glasses; "
+        f"spent ${total_spent}; finished {done} priorities; wrote {journal_count} journal entries.\n"
+        "Use 'you', not 'we'. Observe gently. Celebrate one specific thing. "
+        "Avoid cliche. Avoid 'remember to' and 'keep it up'."
+    )
+    narrative = ""
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"weekly-{uuid.uuid4()}",
+            system_message="You are Flow, a gentle, human storyteller.",
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        narrative = (await chat.send_message(UserMessage(text=prompt))).strip()
+    except Exception:
+        logger.exception("weekly narrative failed")
+        narrative = (
+            f"You focused {total_focus // 60}h this week, drank {total_water} glasses, "
+            f"and finished {done} priorities. Quiet progress."
+        )
+
+    return {
+        "range": {"start": start_date, "end": today_iso()},
+        "narrative": narrative,
+        "totals": {
+            "focus_minutes": total_focus,
+            "water_glasses": total_water,
+            "spent": total_spent,
+            "priorities_done": done,
+            "journal_entries": journal_count,
+        },
+    }
+
+
 # ------------------ Utility: reset demo data ------------------
 
 @api_router.delete("/profile/reset")
@@ -853,6 +1167,10 @@ async def reset_all(user_id: str = DEFAULT_USER):
     await db.expenses.delete_many({"user_id": user_id})
     await db.habits.delete_many({"user_id": user_id})
     await db.ai_cache.delete_many({"user_id": user_id})
+    await db.intentions.delete_many({"user_id": user_id})
+    await db.journal.delete_many({"user_id": user_id})
+    await db.rituals.delete_many({"user_id": user_id})
+    await db.ritual_completions.delete_many({"user_id": user_id})
     await db.profiles.delete_one({"user_id": user_id})
     return {"reset": True}
 
@@ -863,12 +1181,18 @@ async def export_data(user_id: str = DEFAULT_USER):
     priorities = await db.priorities.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
     expenses = await db.expenses.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
     habits = await db.habits.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
+    intentions = await db.intentions.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
+    journal = await db.journal.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
+    rituals = await db.rituals.find({"user_id": user_id}, {"_id": 0}).to_list(10000)
     return {
         "exported_at": now_iso(),
         "profile": profile,
         "priorities": priorities,
         "expenses": expenses,
         "habits": habits,
+        "intentions": intentions,
+        "journal": journal,
+        "rituals": rituals,
     }
 
 

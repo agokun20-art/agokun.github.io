@@ -84,4 +84,45 @@ export const api = {
   clearChat: (session_id: string) =>
     request<any>(`/chat/history/${session_id}`, { method: 'DELETE' }),
   chatSuggestions: () => request<any>('/chat/suggestions'),
+
+  // Intention
+  getIntention: () => request<any>('/intention'),
+  setIntention: (word: string, note = '') =>
+    request<any>('/intention', {
+      method: 'PUT',
+      body: JSON.stringify({ word, note }),
+    }),
+
+  // Journal
+  listJournal: (limit = 50) => request<any>(`/journal?limit=${limit}`),
+  createJournal: (content: string) =>
+    request<any>('/journal', {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    }),
+  deleteJournal: (id: string) =>
+    request<any>(`/journal/${id}`, { method: 'DELETE' }),
+
+  // Rituals
+  listRituals: () => request<any>('/rituals'),
+  createRitual: (body: { name: string; steps: string[]; emoji?: string }) =>
+    request<any>('/rituals', { method: 'POST', body: JSON.stringify(body) }),
+  updateRitual: (id: string, body: any) =>
+    request<any>(`/rituals/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteRitual: (id: string) =>
+    request<any>(`/rituals/${id}`, { method: 'DELETE' }),
+  completeRitual: (id: string) =>
+    request<any>(`/rituals/${id}/complete`, { method: 'POST' }),
+  undoRitual: (id: string) =>
+    request<any>(`/rituals/${id}/undo`, { method: 'POST' }),
+
+  // AI parse
+  parsePriority: (text: string) =>
+    request<any>('/parse/priority', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+
+  // Weekly narrative
+  weeklyBrief: () => request<any>('/brief/weekly'),
 };

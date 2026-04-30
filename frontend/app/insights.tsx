@@ -23,7 +23,9 @@ export default function Insights() {
   const [history, setHistory] = useState<any[]>([]);
   const [streaks, setStreaks] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [weekly, setWeekly] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingWeekly, setGeneratingWeekly] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -43,6 +45,20 @@ export default function Insights() {
       }
     })();
   }, []);
+
+  const fetchWeekly = async () => {
+    setGeneratingWeekly(true);
+    haptic.medium();
+    try {
+      const w = await api.weeklyBrief();
+      setWeekly(w);
+      haptic.success();
+    } catch {
+      haptic.warning();
+    } finally {
+      setGeneratingWeekly(false);
+    }
+  };
 
   const doExport = async () => {
     haptic.light();
@@ -123,6 +139,54 @@ export default function Insights() {
             value={streaks?.focus_streak || 0}
             met={streaks?.focus_today_met}
           />
+        </Animated.View>
+
+        {/* Weekly AI narrative */}
+        <Animated.View entering={FadeInDown.duration(500).delay(130)} style={styles.narrativeCard}>
+          <View style={styles.narrativeHead}>
+            <Ionicons name="sparkles" size={14} color={COLORS.text} />
+            <Text style={styles.cardOver}>THIS WEEK · WRITTEN BY FLOW</Text>
+          </View>
+          {weekly ? (
+            <>
+              <Text style={styles.narrativeText}>{weekly.narrative}</Text>
+              <View style={styles.narrativeStats}>
+                <Text style={styles.statChip}>
+                  {Math.floor((weekly.totals.focus_minutes || 0) / 60)}h focus
+                </Text>
+                <Text style={styles.statChip}>{weekly.totals.water_glasses} glasses</Text>
+                <Text style={styles.statChip}>
+                  {weekly.totals.priorities_done} priorities
+                </Text>
+                <Text style={styles.statChip}>${weekly.totals.spent.toFixed(0)}</Text>
+              </View>
+              <Pressable onPress={fetchWeekly} style={styles.refreshBtn} testID="weekly-refresh">
+                <Ionicons name="refresh" size={12} color={COLORS.textSecondary} />
+                <Text style={styles.refreshText}>Regenerate</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.narrativeIntro}>
+                A warm, specific 3-sentence story of your last 7 days — written from your real data.
+              </Text>
+              <Pressable
+                onPress={fetchWeekly}
+                style={styles.narrativeCta}
+                disabled={generatingWeekly}
+                testID="weekly-generate"
+              >
+                {generatingWeekly ? (
+                  <ActivityIndicator color={COLORS.bg} size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="sparkles" size={14} color={COLORS.bg} />
+                    <Text style={styles.narrativeCtaText}>Tell my week</Text>
+                  </>
+                )}
+              </Pressable>
+            </>
+          )}
         </Animated.View>
 
         {/* Focus */}
@@ -250,4 +314,57 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   exportText: { color: COLORS.text, fontSize: 13, fontWeight: '600' },
+  narrativeCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    padding: SPACING.xl,
+    marginBottom: SPACING.lg,
+  },
+  narrativeHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: SPACING.sm },
+  narrativeText: {
+    color: COLORS.text,
+    fontSize: 15,
+    lineHeight: 23,
+    letterSpacing: -0.1,
+    fontStyle: 'italic',
+    marginBottom: SPACING.md,
+  },
+  narrativeIntro: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: SPACING.md,
+  },
+  narrativeCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.text,
+  },
+  narrativeCtaText: { color: COLORS.bg, fontSize: 13, fontWeight: '700' },
+  narrativeStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: SPACING.md },
+  statChip: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    fontWeight: '600',
+  },
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingVertical: 6,
+  },
+  refreshText: { color: COLORS.textSecondary, fontSize: 11, fontWeight: '500' },
 });

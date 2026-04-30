@@ -18,6 +18,9 @@ import { COLORS, RADIUS, SPACING } from '../../src/theme';
 import GlassCard from '../../src/components/GlassCard';
 import AddPriorityModal from '../../src/components/AddPriorityModal';
 import AddExpenseModal from '../../src/components/AddExpenseModal';
+import IntentionModal from '../../src/components/IntentionModal';
+import NorthStarCard from '../../src/components/NorthStarCard';
+import QuickAddInput from '../../src/components/QuickAddInput';
 import { api } from '../../src/api';
 import { getCurrentCoords } from '../../src/location';
 import { haptic } from '../../src/haptics';
@@ -59,6 +62,7 @@ export default function HomeScreen() {
   const [addingPriority, setAddingPriority] = useState(false);
   const [addingExpense, setAddingExpense] = useState(false);
   const [editingPriority, setEditingPriority] = useState<Priority | null>(null);
+  const [intentionOpen, setIntentionOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const flashToast = (msg: string) => {
@@ -211,7 +215,38 @@ export default function HomeScreen() {
             {brief.greeting},{'\n'}
             {brief.name}.
           </Text>
+          {/* Intention pill */}
+          <Pressable
+            onPress={() => {
+              haptic.light();
+              setIntentionOpen(true);
+            }}
+            style={styles.intentionPill}
+            testID="intention-pill"
+          >
+            {brief.intention && brief.intention.word ? (
+              <>
+                <View style={styles.intentionDot} />
+                <Text style={styles.intentionLabel}>TODAY</Text>
+                <Text style={styles.intentionWord}>{brief.intention.word}</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="compass-outline" size={13} color={COLORS.textSecondary} />
+                <Text style={styles.intentionPlaceholder}>
+                  Set your intention for today
+                </Text>
+              </>
+            )}
+          </Pressable>
         </Animated.View>
+
+        {/* North Star */}
+        <NorthStarCard
+          priority={brief.north_star}
+          onToggle={togglePriority}
+          onAsk={() => router.push('/(tabs)/decide')}
+        />
 
         {/* Weather + Outfit */}
         <Animated.View entering={FadeInDown.duration(500).delay(100)}>
@@ -291,6 +326,14 @@ export default function HomeScreen() {
               {leftCount === 0 ? 'All done. Breathe.' : `${leftCount} left`}
             </Text>
           )}
+
+          {/* Quick-add NL input */}
+          <View style={{ marginBottom: SPACING.md }}>
+            <QuickAddInput
+              onCreated={load}
+              onManual={() => setAddingPriority(true)}
+            />
+          </View>
 
           {totalPriorities === 0 ? (
             <Pressable
@@ -441,6 +484,16 @@ export default function HomeScreen() {
         onClose={() => setAddingExpense(false)}
         onSave={saveExpense}
       />
+      <IntentionModal
+        visible={intentionOpen}
+        onClose={() => setIntentionOpen(false)}
+        initialWord={brief.intention?.word || ''}
+        initialNote={brief.intention?.note || ''}
+        onSave={async (word, note) => {
+          await api.setIntention(word, note);
+          setBrief((b: any) => ({ ...b, intention: { word, note } }));
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -465,6 +518,28 @@ const styles = StyleSheet.create({
     letterSpacing: -1.2,
     lineHeight: 44,
   },
+  intentionPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  intentionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.text },
+  intentionLabel: {
+    color: COLORS.textTertiary,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    fontWeight: '700',
+  },
+  intentionWord: { color: COLORS.text, fontSize: 13, fontWeight: '600', letterSpacing: -0.2 },
+  intentionPlaceholder: { color: COLORS.textSecondary, fontSize: 12, fontWeight: '500' },
   cardLabel: {
     color: COLORS.textTertiary,
     fontSize: 10,
