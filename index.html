@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Alex — A Private Practice</title>
+  <meta name="description" content="Alex. A private practice in taste, craft and restraint.">
+  <meta name="theme-color" content="#0a0908">
+  <meta property="og:title" content="Alex — A Private Practice">
+  <meta property="og:description" content="A private practice in taste, craft and restraint.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fonts/bodoni-moda.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/hanken-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script>
+    document.documentElement.classList.add('js');
+    setTimeout(function () { document.documentElement.classList.add('is-loaded'); }, 6000);
+  </script>
+</head>
+<body>
+
+  <div class="loader" aria-hidden="true">
+    <div class="loader__mark">A</div>
+    <div class="loader__row">
+      <span class="label">Alex</span>
+      <span class="loader__count"><span data-count>000</span></span>
+      <span class="label">Edition MMXXVI</span>
+    </div>
+    <div class="loader__bar"><i></i></div>
+  </div>
+
+  <div class="grain" aria-hidden="true"></div>
+  <div class="cursor" aria-hidden="true"><span></span></div>
+
+  <header class="nav" data-nav>
+    <a class="nav__brand" href="#top" aria-label="Alex, back to top">Alex</a>
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#works"><sup>01</sup>Works</a>
+      <a href="#principles"><sup>02</sup>Principles</a>
+      <a href="#about"><sup>03</sup>About</a>
+    </nav>
+    <a class="nav__cta" href="#contact">Enquire</a>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-controls="menu" data-menu-toggle>
+      <span data-menu-label>Menu</span>
+    </button>
+  </header>
+
+  <div class="menu" id="menu" data-menu hidden>
+    <nav aria-label="Menu">
+      <a href="#works"><sup>01</sup>Works</a>
+      <a href="#principles"><sup>02</sup>Principles</a>
+      <a href="#about"><sup>03</sup>About</a>
+      <a href="#contact"><sup>04</sup><em>Enquire</em></a>
+    </nav>
+    <p class="label">Edition MMXXVI</p>
+  </div>
+
+  <main id="top">
+
+    <section class="hero" data-hero>
+      <canvas class="hero__canvas" data-shader aria-hidden="true"></canvas>
+      <div class="hero__veil" aria-hidden="true"></div>
+
+      <div class="hero__intro">
+        <p class="label hero__kicker"><i class="dot"></i>A private practice</p>
+        <p class="hero__tag">Taste, craft <span class="amp">&amp;</span> the discipline of <em>restraint</em>.</p>
+      </div>
+
+      <h1 class="hero__name" data-fit aria-label="Alex">
+        <span class="hero__name-inner" aria-hidden="true"><span class="ch" style="--i:0"><span>A</span></span><span class="ch" style="--i:1"><span>l</span></span><span class="ch" style="--i:2"><span>e</span></span><span class="ch" style="--i:3"><span>x</span></span></span>
+      </h1>
+
+      <div class="hero__foot">
+        <a class="label hero__scroll" href="#manifesto"><span class="hero__scroll-line"></span>Scroll</a>
+        <span class="label">Edition MMXXVI</span>
+        <span class="label">By introduction only</span>
+      </div>
+    </section>
+
+    <section class="manifesto" id="manifesto">
+      <p class="label section-label"><span>(00)</span>Manifesto</p>
+      <p class="manifesto__text" data-words>
+        Nothing here is loud. Every detail is considered, every line is earned, and whatever does not belong has been removed. What remains is a <em>signature</em>: quiet, exacting, and impossible to mistake for anyone else.
+      </p>
+    </section>
+
+    <div class="marquee" aria-hidden="true" data-marquee>
+      <div class="marquee__track">
+        <span>Taste</span><i>✦</i><span class="it">Craft</span><i>✦</i><span>Restraint</span><i>✦</i><span class="it">Signature</span><i>✦</i>
+        <span>Taste</span><i>✦</i><span class="it">Craft</span><i>✦</i><span>Restraint</span><i>✦</i><span class="it">Signature</span><i>✦</i>
+      </div>
+    </div>
+
+    <section class="works" id="works">
+      <header class="section-head">
+        <p class="label section-label"><span>(01)</span>Selected works</p>
+        <h2 class="display" data-split>Selected <em>works</em></h2>
+        <p class="section-head__note">Four studies in material and light. A small body of work, chosen rather than collected.</p>
+      </header>
+
+      <ol class="works__list" data-works>
+        <li class="work" data-work="0">
+          <figure class="work__media"><img src="assets/img/work-1.webp" alt="Ivory silk draped over a black stone plinth" loading="lazy" width="1024" height="1536"></figure>
+          <span class="work__no">I</span>
+          <h3 class="work__title">Untitled, <em>I</em></h3>
+          <span class="work__meta">Silk on stone</span>
+          <span class="work__year">MMXXVI</span>
+        </li>
+        <li class="work" data-work="1">
+          <figure class="work__media"><img src="assets/img/work-2.webp" alt="A travertine staircase crossed by a shaft of light" loading="lazy" width="1024" height="1536"></figure>
+          <span class="work__no">II</span>
+          <h3 class="work__title">Untitled, <em>II</em></h3>
+          <span class="work__meta">Travertine, light</span>
+          <span class="work__year">MMXXVI</span>
+        </li>
+        <li class="work" data-work="2">
+          <figure class="work__media"><img src="assets/img/work-3.webp" alt="A brushed brass sphere on black marble" loading="lazy" width="1024" height="1536"></figure>
+          <span class="work__no">III</span>
+          <h3 class="work__title">Untitled, <em>III</em></h3>
+          <span class="work__meta">Brass, marble</span>
+          <span class="work__year">MMXXVI</span>
+        </li>
+        <li class="work" data-work="3">
+          <figure class="work__media"><img src="assets/img/work-4.webp" alt="A calm sea at dusk under heavy cloud" loading="lazy" width="1024" height="1536"></figure>
+          <span class="work__no">IV</span>
+          <h3 class="work__title">Untitled, <em>IV</em></h3>
+          <span class="work__meta">Sea, dusk</span>
+          <span class="work__year">MMXXVI</span>
+        </li>
+      </ol>
+
+      <div class="preview" aria-hidden="true" data-preview>
+        <div class="preview__frame">
+          <img src="assets/img/work-1.webp" alt="" loading="lazy">
+          <img src="assets/img/work-2.webp" alt="" loading="lazy">
+          <img src="assets/img/work-3.webp" alt="" loading="lazy">
+          <img src="assets/img/work-4.webp" alt="" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <section class="principles" id="principles">
+      <header class="section-head">
+        <p class="label section-label"><span>(02)</span>Principles</p>
+        <h2 class="display" data-split>Three rules, <em>kept</em></h2>
+      </header>
+      <div class="principles__grid">
+        <article class="principle" data-reveal>
+          <span class="principle__no">i.</span>
+          <h3>Restraint</h3>
+          <p>The strongest statement is usually the shortest. Edit until only the essential is left, then stop.</p>
+        </article>
+        <article class="principle" data-reveal style="--d:.12s">
+          <span class="principle__no">ii.</span>
+          <h3>Precision</h3>
+          <p>Proportion, spacing, timing. The details nobody names are the ones everybody feels.</p>
+        </article>
+        <article class="principle" data-reveal style="--d:.24s">
+          <span class="principle__no">iii.</span>
+          <h3>Permanence</h3>
+          <p>Made to outlast the season it was made in. Nothing here is built for a trend.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="about" id="about">
+      <figure class="about__media" data-parallax>
+        <img src="assets/img/about.webp" alt="A sculptural wooden chair beside a tall window in late light" loading="lazy" width="1024" height="1536">
+      </figure>
+      <div class="about__body">
+        <p class="label section-label"><span>(03)</span>About</p>
+        <h2 class="display" data-split>Fewer things, <em>done properly</em></h2>
+        <div class="about__copy" data-reveal>
+          <p>Alex works quietly and selectively: a small number of commitments at a time, each given full attention from the first conversation to the final detail.</p>
+          <p>This page is the short version. The long one is better told in person.</p>
+        </div>
+        <dl class="about__facts" data-reveal>
+          <div><dt>Enquiries</dt><dd>By introduction</dd></div>
+          <div><dt>Commitments</dt><dd>A few, at a time</dd></div>
+          <div><dt>Replies</dt><dd>Personally</dd></div>
+        </dl>
+        <p class="about__sign" data-reveal>
+          <span>Alex</span>
+          <svg viewBox="0 0 220 24" fill="none" aria-hidden="true"><path d="M2 16c38-12 78-14 118-8 30 4 58 6 98-4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" pathLength="1"/></svg>
+        </p>
+      </div>
+    </section>
+
+    <section class="contact" id="contact">
+      <p class="label section-label"><span>(04)</span>Enquiries</p>
+      <h2 class="contact__title" data-split>Let&rsquo;s <em>begin</em>.</h2>
+      <!-- Replace with the real address before launch. -->
+      <a class="contact__btn" href="mailto:hello@example.com" data-magnetic>
+        <span>Enquire</span>
+      </a>
+      <p class="contact__note">Private enquiries are read and answered personally.</p>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer__row">
+      <span class="label">&copy; MMXXVI Alex</span>
+      <span class="label footer__mid">All rights reserved</span>
+      <a class="label" href="#top">Back to top &uarr;</a>
+    </div>
+    <div class="footer__mark" data-fit aria-hidden="true"><span class="footer__mark-inner">Alex</span></div>
+  </footer>
+
+  <script src="assets/js/lenis.min.js" defer></script>
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>
