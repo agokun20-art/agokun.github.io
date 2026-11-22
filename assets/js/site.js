@@ -15,13 +15,12 @@
       outer.appendChild(inner);
       return outer;
     };
-    $$('*', say).length; // force style
     Array.prototype.slice.call(say.childNodes).forEach(function (n) {
       if (n.nodeType === 3) {
         var frag = document.createDocumentFragment();
-        n.textContent.split(/(\s+)/).forEach(function (part) {
+        n.textContent.split(/([ \t\n]+)/).forEach(function (part) {
           if (!part) return;
-          frag.appendChild(/^\s+$/.test(part) ? document.createTextNode(' ') : wrap(document.createTextNode(part)));
+          frag.appendChild(/^[ \t\n]+$/.test(part) ? document.createTextNode(' ') : wrap(document.createTextNode(part)));
         });
         say.replaceChild(frag, n);
       } else {
@@ -121,7 +120,7 @@
   };
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && !win.hidden) { close(); return; }
-    if (!win.hidden && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send(); return; }
+    if (!win.hidden && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); return; }
     var hot = e.code === 'KeyF' && e.shiftKey && (e.metaKey || e.ctrlKey);
     if (hot) {
       e.preventDefault();
