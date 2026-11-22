@@ -3,3 +3,5 @@
 Alex Gokun’s personal site. Static HTML, CSS and one small script; no build step.
 
 Preview locally with `python3 -m http.server 8000`.
+
+Live at https://alexships.pages.dev (Cloudflare Pages project `alexships`). Deploy with `npx wrangler pages deploy . --project-name alexships --branch main`.
