@@ -7,16 +7,14 @@
   font-display: swap;
 }
 
-/* Two colours only. Every rule below reads --fg and --bg. */
+/* Two colours only: white on black. Every rule below reads --fg and --bg. */
 
 :root {
   --gutter: clamp(1.25rem, 4vw, 3.5rem);
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-.dark { --fg: #fff; --bg: #000; }
-.light { --fg: #000; --bg: #fff; }
-.dark, .light { background: var(--bg); color: var(--fg); }
+.dark { --fg: #fff; --bg: #000; background: var(--bg); color: var(--fg); }
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -238,7 +236,14 @@ h1 {
 
 .pllar {
   container-type: inline-size;
-  padding-block: clamp(4rem, 9vw, 8.5rem) clamp(4rem, 8vw, 7.5rem);
+  padding-bottom: clamp(4rem, 8vw, 7.5rem);
+}
+
+.pllar::before {
+  content: "";
+  display: block;
+  margin-bottom: clamp(4rem, 9vw, 8.5rem);
+  border-top: 1.5px solid var(--fg);
 }
 
 .pllar__name {
@@ -270,14 +275,14 @@ h1 {
   padding-block: clamp(4rem, 9vw, 8.5rem);
 }
 
-.light .product::before {
+.product::before, .about::before {
   content: "";
   display: block;
   margin-bottom: clamp(4rem, 9vw, 8.5rem);
   border-top: 1.5px solid var(--fg);
 }
 
-.light .product { padding-top: 0; }
+.product, .about { padding-top: 0; }
 
 .phones {
   display: grid;
@@ -316,7 +321,7 @@ h1 {
 .product--side h2 { margin-bottom: clamp(1.5rem, 3vw, 2.75rem); }
 
 .window { display: block; }
-.window img { border-radius: 3.86% / 6.67%; }
+.window img { border-radius: 3.86% / 6.67%; outline: 1.5px solid var(--fg); outline-offset: -1px; }
 
 .art { display: block; margin-bottom: clamp(2.5rem, 6vw, 5rem); }
 
